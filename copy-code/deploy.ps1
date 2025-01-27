@@ -1,28 +1,33 @@
-# In your copy-code directory's package.json, you need to add scripts for building and packaging. Here's how to modify your package.json:
-# jsonCopy{
-#   "scripts": {
-#     "compile": "tsc -p ./",
-#     "watch": "tsc -watch -p ./",
-#     "package": "vsce package",
-#     "vscode:prepublish": "npm run compile"
-#   }
-# }
+# Enhanced deploy.ps1
+# Increment version in package.json
+$packageJson = Get-Content .\package.json | ConvertFrom-Json
+$currentVersion = $packageJson.version
+$versionParts = $currentVersion.Split('.')
+$versionParts[2] = ([int]$versionParts[2] + 1).ToString()
+$newVersion = $versionParts -join '.'
+$packageJson.version = $newVersion
+$packageJson | ConvertTo-Json | Set-Content .\package.json
 
-npm run compile  # First compile the TypeScript
-npm run package  # Then create the .vsix package
+# Compile TypeScript
+npm run compile
 
-Write-Output "If you get any errors about vsce not being found, you'll need to install it:"
-Write-Output "npm install -g @vscode/vsce"
-Write-Output "In VS Code, install extension from vsix, and pick the copy-code-x.x.x.vsix"
+# Remove old .vsix files to prevent confusion
+Remove-Item *.vsix -ErrorAction SilentlyContinue
 
-# In Windows PowerShell
-Write-Output "Installing extension in VSCode for your windows environment."
-code --install-extension copy-code-0.0.1.vsix
+# Package the extension
+npm run package
 
-# Convert Windows path to WSL path
+Write-Output "Extension packaged with version $newVersion"
+
+# Install in Windows VSCode
+Write-Output "Installing extension in VSCode for Windows environment."
+$vsixFile = Get-Item *.vsix | Select-Object -First 1
+code --install-extension $vsixFile.FullName
+
+# Convert Windows path for WSL
 $windowsPath = (Get-Item .).FullName
 $driveLetter = $windowsPath[0].ToString().ToLower()
 $wslPath = "/mnt/$driveLetter" + ($windowsPath.Substring(2) -replace '\\', '/')
 
-Write-Output "Installing extension in wsl from location: $wslPath/copy-code-0.0.1.vsix"
-wsl -d udev2404 code --install-extension "$wslPath/copy-code-0.0.1.vsix"
+Write-Output "Installing extension in WSL from location: $wslPath/$($vsixFile.Name)"
+wsl -d udev2404 code --install-extension "$wslPath/$($vsixFile.Name)"

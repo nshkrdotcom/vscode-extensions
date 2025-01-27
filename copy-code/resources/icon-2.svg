@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" 
+     width="16" 
+     height="16" 
+     viewBox="0 0 16 16">
+    <path d="M10 20H50L60 30H110V100H10V20Z" fill="#007ACC"/> <!-- Folder body -->
+    <path d="M65 60H95" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"/> <!-- Arrow Line -->
+    <path d="M90 55L95 60L90 65" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/> <!-- Arrow Head -->
+</svg>

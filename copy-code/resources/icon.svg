@@ -1,5 +1,7 @@
-<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M10 20H50L60 30H110V100H10V20Z" fill="#007ACC"/> <!-- Folder body -->
-    <path d="M65 60H95" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"/> <!-- Arrow Line -->
-    <path d="M90 55L95 60L90 65" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/> <!-- Arrow Head -->
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" 
+     width="16" 
+     height="16" 
+     viewBox="0 0 16 16">
+    <path fill="currentColor" d="M4 6h2v2H4zm0 3h2v2H4zm0 3h2v2H4zm8-6h-2v2h2zm0 3h-2v2h2zm0 3h-2v2h2zM2 2v12h12V2H2zm11 11H3V3h10v10z"/>
 </svg>
