@@ -1,0 +1,16 @@
+{
+    "folders": [
+        {
+            "name": "Copy Code Extension",
+            "path": "copy-code"
+        }
+	// ADD MORE HERE
+    ],
+    "settings": {
+        "files.exclude": {
+            "**/.git": true,
+            "**/node_modules": true,
+            "**/out": true
+        }
+    }
+}
