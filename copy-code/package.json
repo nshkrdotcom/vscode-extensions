@@ -1,39 +1,92 @@
 {
     "name":  "copy-code",
     "displayName":  "Copy Code",
-    "description":  "Copy content from files, including all open files and project files with configurable extensions",
-    "version":  "0.1.3",
+    "description":  "Copy content from all open files or project files with configurable extensions.",
+    "version":  "0.1.12",
+    "publisher":  "nshkrdotcom",
     "repository":  {
                        "type":  "git",
-                       "url":  "https://github.com/nshkrdotcom/vscode-extensions/copy-code"
+                       "url":  "https://github.com/nshkrdotcom/vscode-extensions.git",
+                       "directory":  "copy-code"
                    },
-    "publisher":  "nshkrdotcom",
     "engines":  {
-                    "vscode":  "^1.96.0"
+                    "vscode":  "^1.85.0"
                 },
     "categories":  [
                        "Other"
                    ],
     "activationEvents":  [
                              "onCommand:copy-code.copyAllFiles",
-                             "onCommand:copy-code.copyAllOpenFiles",
-                             "onCommand:copy-code.copyAllProjectFiles",
-                             "onCommand:copy-code.configureExtensions"
+                             "onStartupFinished"
                          ],
     "main":  "./out/extension.js",
     "icon":  "resources/icon.png",
     "contributes":  {
-                        "submenus":  [
-                                         "@{id=copy-code-submenu; label=Code Copy Actions}"
-                                     ],
                         "commands":  [
-                                         "@{command=copy-code.copyAllFiles; title=Copy All Files; icon=$(files)}",
-                                         "@{command=copy-code.copyAllProjectFiles; title=Copy Project Files; icon=$(folder)}",
-                                         "@{command=copy-code.configureExtensions; title=Configure Extensions; icon=$(settings-gear)}"
+                                         {
+                                             "command":  "copy-code.copyAllFiles",
+                                             "title":  "Copy All Open Files",
+                                             "category":  "Copy Code",
+                                             "icon":  "$(files)"
+                                         },
+                                         {
+                                             "command":  "copy-code.copyAllProjectFiles",
+                                             "title":  "Copy All Project Files",
+                                             "category":  "Copy Code",
+                                             "icon":  "$(folder)"
+                                         },
+                                         {
+                                             "command":  "copy-code.configureExtensions",
+                                             "title":  "Configure Extensions",
+                                             "category":  "Copy Code",
+                                             "icon":  "$(settings-gear)"
+                                         }
                                      ],
+                        "viewsContainers":  {
+                                                "activitybar":  [
+                                                                    {
+                                                                        "id":  "copy-code-view-container",
+                                                                        "title":  "Copy Code Actions",
+                                                                        "icon":  "resources/icon.png"
+                                                                    }
+                                                                ]
+                                            },
+                        "views":  {
+                                      "copy-code-view-container":  [
+                                                                       {
+                                                                           "id":  "copy-code-actions",
+                                                                           "name":  "Actions"
+                                                                       }
+                                                                   ]
+                                  },
                         "menus":  {
-                                      "view/title":  "",
-                                      "view/title/copy-code-submenu":  "  "
+                                      "view/title":  [
+                                                         {
+                                                             "command":  "copy-code.copyAllFiles",
+                                                             "when":  "view == copy-code-actions",
+                                                             "group":  "navigation",
+                                                             "icon":  "resources/icon.png"
+                                                         }
+                                                     ],
+                                      "editor/title":  [
+                                                           {
+                                                               "when":  "resourceScheme == \u0027file\u0027",
+                                                               "command":  "copy-code.copyAllFiles",
+                                                               "group":  "navigation@10"
+                                                           },
+                                                           {
+                                                               "when":  "resourceScheme == \u0027file\u0027",
+                                                               "command":  "copy-code.copyAllProjectFiles",
+                                                               "group":  "navigation@11"
+                                                           }
+                                                       ],
+                                      "explorer/context":  [
+                                                               {
+                                                                   "when":  "isFolder",
+                                                                   "command":  "copy-code.copyAllProjectFiles",
+                                                                   "group":  "2_workspace@10"
+                                                               }
+                                                           ]
                                   }
                     },
     "scripts":  {
@@ -41,19 +94,19 @@
                     "compile":  "tsc -p ./",
                     "watch":  "tsc -watch -p ./",
                     "pretest":  "npm run compile \u0026\u0026 npm run lint",
-                    "lint":  "eslint src",
+                    "lint":  "eslint src --ext ts",
                     "test":  "vscode-test",
                     "package":  "vsce package"
                 },
     "devDependencies":  {
-                            "@types/vscode":  "^1.96.0",
-                            "@types/mocha":  "^10.0.10",
+                            "@types/vscode":  "^1.85.0",
+                            "@types/mocha":  "^10.0.6",
                             "@types/node":  "20.x",
-                            "@typescript-eslint/eslint-plugin":  "^8.17.0",
-                            "@typescript-eslint/parser":  "^8.17.0",
-                            "eslint":  "^9.16.0",
-                            "typescript":  "^5.7.2",
-                            "@vscode/test-cli":  "^0.0.10",
-                            "@vscode/test-electron":  "^2.4.1"
+                            "@typescript-eslint/eslint-plugin":  "^6.15.0",
+                            "@typescript-eslint/parser":  "^6.15.0",
+                            "eslint":  "^8.56.0",
+                            "typescript":  "^5.3.3",
+                            "@vscode/test-cli":  "^0.0.4",
+                            "@vscode/test-electron":  "^2.3.8"
                         }
 }

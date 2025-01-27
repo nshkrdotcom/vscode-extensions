@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" 
-     width="16" 
-     height="16" 
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="16"
+     height="16"
      viewBox="0 0 16 16">
-    <path fill="currentColor" d="M4 6h2v2H4zm0 3h2v2H4zm0 3h2v2H4zm8-6h-2v2h2zm0 3h-2v2h2zm0 3h-2v2h2zM2 2v12h12V2H2zm11 11H3V3h10v10z"/>
+    <path fill="#FFFFFF" d="M4 6h2v2H4zm0 3h2v2H4zm0 3h2v2H4zm8-6h-2v2h2zm0 3h-2v2h2zm0 3h-2v2h2zM2 2v12h12V2H2zm11 11H3V3h10v10z"/>
 </svg>
