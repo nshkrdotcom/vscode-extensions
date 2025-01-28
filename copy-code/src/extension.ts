@@ -178,6 +178,85 @@ async function configureExtensions(context: vscode.ExtensionContext): Promise<vo
 }
 
 
+
+
+
+class ConfigTreeItem extends vscode.TreeItem {
+    constructor(
+        public readonly label: string,
+        public readonly collapsibleState: vscode.TreeItemCollapsibleState,
+        public readonly command?: vscode.Command
+    ) {
+        super(label, collapsibleState);
+    }
+}
+
+class ConfigTreeDataProvider implements vscode.TreeDataProvider<ConfigTreeItem> {
+    private _onDidChangeTreeData: vscode.EventEmitter<ConfigTreeItem | undefined | null | void> = new vscode.EventEmitter<ConfigTreeItem | undefined | null | void>();
+    readonly onDidChangeTreeData: vscode.Event<ConfigTreeItem | undefined | null | void> = this._onDidChangeTreeData.event;
+
+    constructor(private context: vscode.ExtensionContext) {}
+
+    refresh(): void {
+        this._onDidChangeTreeData.fire();
+    }
+
+    getTreeItem(element: ConfigTreeItem): vscode.TreeItem {
+        return element;
+    }
+
+    async getChildren(element?: ConfigTreeItem): Promise<ConfigTreeItem[]> {
+        if (!element) {
+            // Root level - show main categories
+            return [
+                new ConfigTreeItem('Copy Actions', vscode.TreeItemCollapsibleState.Expanded),
+                new ConfigTreeItem('Configuration', vscode.TreeItemCollapsibleState.Expanded)
+            ];
+        }
+
+        if (element.label === 'Copy Actions') {
+            return [
+                new ConfigTreeItem('Copy All Open Files', vscode.TreeItemCollapsibleState.None, {
+                    command: 'copy-code.copyAllFiles',
+                    title: 'Copy All Open Files'
+                }),
+                new ConfigTreeItem('Copy All Project Files', vscode.TreeItemCollapsibleState.None, {
+                    command: 'copy-code.copyAllProjectFiles',
+                    title: 'Copy All Project Files'
+                })
+            ];
+        }
+
+        if (element.label === 'Configuration') {
+            const config = getConfig(this.context);
+            const items: ConfigTreeItem[] = [];
+            
+            // Add Configure button
+            items.push(new ConfigTreeItem('Configure Extensions', vscode.TreeItemCollapsibleState.None, {
+                command: 'copy-code.configureExtensions',
+                title: 'Configure Extensions'
+            }));
+
+            // Show current configuration
+            items.push(new ConfigTreeItem(
+                'Enabled Project Types',
+                vscode.TreeItemCollapsibleState.Expanded
+            ));
+
+            return items;
+        }
+
+        if (element.label === 'Enabled Project Types') {
+            const config = getConfig(this.context);
+            return config.enabledProjectTypes.map(type => 
+                new ConfigTreeItem(type, vscode.TreeItemCollapsibleState.None)
+            );
+        }
+
+        return [];
+    }
+}
+
 // Deactivate function - called when the extension is deactivated
 export function deactivate(): void {
     // Clean up resources if needed
@@ -194,18 +273,26 @@ class NoDataProvider implements vscode.TreeDataProvider<string> {
     }
 }
 
-// Activate function - entry point of the extension
 export function activate(context: vscode.ExtensionContext): void {
     console.log('Congratulations, your extension "copy-code" is now active!');
 
-    // Register Tree Data Provider
-    const treeDataProvider = new NoDataProvider();
-    vscode.window.registerTreeDataProvider('copy-code-actions', treeDataProvider); // Use your view ID
+    // Register Tree Data Provider with the new implementation
+    const treeDataProvider = new ConfigTreeDataProvider(context);
+    vscode.window.registerTreeDataProvider('copy-code-actions', treeDataProvider);
 
     // Register commands
     context.subscriptions.push(
-        vscode.commands.registerCommand('copy-code.copyAllFiles', () => copyAllOpenFiles(context)),
-        vscode.commands.registerCommand('copy-code.copyAllProjectFiles', () => copyAllProjectFiles(context)),
-        vscode.commands.registerCommand('copy-code.configureExtensions', () => configureExtensions(context))
+        vscode.commands.registerCommand('copy-code.copyAllFiles', () => {
+            copyAllOpenFiles(context);
+            treeDataProvider.refresh(); // Refresh view after operation
+        }),
+        vscode.commands.registerCommand('copy-code.copyAllProjectFiles', () => {
+            copyAllProjectFiles(context);
+            treeDataProvider.refresh(); // Refresh view after operation
+        }),
+        vscode.commands.registerCommand('copy-code.configureExtensions', async () => {
+            await configureExtensions(context);
+            treeDataProvider.refresh(); // Refresh view after configuration changes
+        })
     );
 }
