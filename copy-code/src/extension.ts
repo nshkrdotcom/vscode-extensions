@@ -315,43 +315,29 @@ function getAllowedExtensions(config: CopyCodeConfig): Set<string> {
 // Function to copy content from all open files
 async function copyAllOpenFiles(context: vscode.ExtensionContext): Promise<void> {
     try {
-        const textDocuments = vscode.workspace.textDocuments;
+        const textDocuments = vscode.workspace.textDocuments.filter(doc => {
+            // Only include visibly open documents
+            return doc.isUntitled === false && 
+                   doc.getText().trim().length > 0 &&
+                   !doc.isClosed &&
+                   vscode.window.visibleTextEditors.some(editor => editor.document === doc);
+        });
 
         if (textDocuments.length === 0) {
             vscode.window.showInformationMessage('No open files found.');
             return;
         }
         
-        const validDocs = textDocuments.filter(doc => {
-            // Skip untitled or empty files
-            if (doc.isUntitled || doc.getText().trim().length === 0) {
-              return false;
-            }
-
-            // Skip git-related files using a more comprehensive check
-            const lowerCaseFileName = doc.fileName.toLowerCase();
-            if (lowerCaseFileName.includes('.git/') || lowerCaseFileName.includes('.git\\') || lowerCaseFileName.endsWith('.git')) {
-                return false;
-            }
-
-            return true;
-        });
-        
-        if (validDocs.length === 0) {
-            vscode.window.showInformationMessage('No valid open files found to copy.');
-            return;
-        }
-
-        const contents = validDocs.map(doc => {
+        const contents = textDocuments.map(doc => {
             const relativePath = vscode.workspace.asRelativePath(doc.fileName);
             return `=== ${relativePath} ===\n${doc.getText()}\n`;
         }).join('\n');
 
         await vscode.env.clipboard.writeText(contents);
-        vscode.window.showInformationMessage(`Copied content from ${validDocs.length} open files to clipboard.`);
+        vscode.window.showInformationMessage(`Copied content from ${textDocuments.length} open files to clipboard.`);
     } catch (error) {
-        vscode.window.showErrorMessage(`Failed to copy content from open files: ${error instanceof Error ? error.message : 'Unknown error'}`);
         console.error('Error in copyAllOpenFiles:', error);
+        vscode.window.showErrorMessage(`Failed to copy content from open files: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
 }
 
