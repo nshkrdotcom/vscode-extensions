@@ -1,120 +1,90 @@
-# VS Code Extensions Development
+# Copy Code: Effortless Code Sharing Across Your Projects 🚀
 
-This repository contains multiple VS Code extensions. The setup is designed to make development and testing of multiple extensions straightforward while maintaining proper isolation and configuration for each extension.
+## Overview
 
-## Initial Setup
+Copy Code is a powerful Visual Studio Code extension designed to simplify code sharing and project exploration. Whether you're collaborating, documenting, or transferring code between projects, this extension provides intuitive tools to quickly copy code from open files or entire project directories.
 
-Run these PowerShell commands to set up the development environment:
+## 🌟 Key Features
 
-```powershell
-# Create the main extensions directory in VS Code if it doesn't exist
-New-Item -ItemType Directory -Path "$env:USERPROFILE\.vscode\extensions\my-extensions" -Force
+### 1. Copy All Open Files
+- Instantly capture content from all open files in your workspace
+- Perfect for sharing current work or creating quick code snapshots
+- Works across multiple file types and project configurations
 
-# Create symlinks for each extension
-# You'll need to run this for each new extension you create
-function New-ExtensionSymlink {
-    param(
-        [Parameter(Mandatory=$true)]
-        [string]$ExtensionName
-    )
-    
-    $sourcePath = "$PSScriptRoot\$ExtensionName"
-    $targetPath = "$env:USERPROFILE\.vscode\extensions\my-extensions\$ExtensionName"
-    
-    if (!(Test-Path $sourcePath)) {
-        Write-Error "Source extension directory does not exist: $sourcePath"
-        return
-    }
-    
-    New-Item -ItemType SymbolicLink -Path $targetPath -Target $sourcePath -Force
-    Write-Host "Created symlink for $ExtensionName"
-}
+### 2. Copy All Project Files
+- Comprehensive file scanning with intelligent filtering
+- Supports multiple project types out of the box
+- Customizable file extension and blacklist management
 
-# Example usage:
-# New-ExtensionSymlink -ExtensionName "copy-code"
-```
+### 3. Flexible Project Type Support
+Predefined support for:
+- PowerShell
+- Terraform
+- Bash
+- PHP
+- MySQL
+- Python
+- Node.js
+- And more!
 
-## Creating a New Extension
+### 4. Advanced Filtering Capabilities
+- Respect .gitignore rules
+- Customizable file extension whitelist
+- Configurable blacklist for sensitive or unnecessary files
 
-When creating a new extension, follow these steps:
+## 🛠 Installation
 
-1. Create the extension:
-```powershell
-# Navigate to repository root
-cd your-repo-root
+1. Open Visual Studio Code
+2. Go to Extensions (Ctrl+Shift+X)
+3. Search for "Copy Code"
+4. Click Install
 
-# Create new extension directory
-mkdir new-extension-name
-cd new-extension-name
+## 🔧 Configuration
 
-# Initialize extension
-npm install -g yo generator-code
-yo code  # Choose TypeScript when prompted
-```
+### Project Types
+Toggle supported project types directly from the extension view:
+- Select which language ecosystems to include
+- Add custom file extensions
+- Define project-specific file exclusions
 
-2. Set up extension-specific VS Code settings. Create `.vscode/settings.json` in your extension directory:
-```json
-{
-    "typescript.tsdk": "./node_modules/typescript/lib",
-    "editor.formatOnSave": true,
-    "editor.codeActionsOnSave": {
-        "source.fixAll.eslint": true
-    },
-    "typescript.preferences.importModuleSpecifier": "relative"
-}
-```
+### Custom Blacklisting
+Easily exclude files or patterns you don't want to be copied:
+- Ignore specific filenames
+- Use wildcards for flexible matching
+- Prevent accidental sharing of sensitive configurations
 
-3. Create a symlink for the new extension:
-```powershell
-# From repository root
-. .\create-symlink.ps1  # Source the script
-New-ExtensionSymlink -ExtensionName "new-extension-name"
-```
+## 💡 Usage
 
-4. Add the extension to the workspace file (`vscode-extensions.code-workspace`):
-```json
-{
-    "folders": [
-        {
-            "name": "Copy Code Extension",
-            "path": "copy-code"
-        },
-        {
-            "name": "New Extension",
-            "path": "new-extension-name"
-        }
-    ]
-}
-```
+### Copy Open Files
+- Use Command Palette: `Copy All Open Files`
+- Click the "Copy Files" icon in the Copy Code sidebar
+- Right-click in the editor and select "Copy All Open Files"
 
-## Development Workflow
+### Copy Project Files
+- Use Command Palette: `Copy All Project Files`
+- Click the "Copy Project Files" icon in the Copy Code sidebar
+- Right-click in the file explorer and select "Copy All Project Files"
 
-1. Open the workspace:
-```powershell
-code vscode-extensions.code-workspace
-```
+## 🚦 Safeguards
 
-2. Select the extension you want to work on in the workspace explorer
+- Warns before copying large numbers of files
+- Checks for .gitignore to prevent unintended file inclusion
+- Provides clear notifications about copy operations
 
-3. Press F5 to launch the Extension Development Host for testing
+## 🤝 Contributing
 
-4. Make changes and test:
-   - Edit code in the extension's `src/extension.ts`
-   - Changes are automatically compiled
-   - Press Ctrl+R in Extension Development Host to reload
-   - Check Debug Console for logs and errors
+Found a bug? Have a suggestion? 
+- Open an issue on our GitHub repository
+- Pull requests are welcome!
 
-5. After making changes:
-   - Run `npm run compile` in the extension directory
-   - Restart your regular VS Code to use the updated version
+## 📄 License
 
-## Extension Organization
+MIT License
 
-Each extension should maintain its own:
-- `.vscode/settings.json` for extension-specific settings
-- `package.json` for extension metadata and dependencies
-- `tsconfig.json` for TypeScript configuration
-- `src/` directory for source code
-- `.gitignore` for extension-specific ignored files
+## 🏷️ Version
 
-The workspace configuration helps manage all extensions while maintaining their independence.
+Current Version: 0.1.32
+
+---
+
+**Developed in 💢 by nshkr.com**
