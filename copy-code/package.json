@@ -2,7 +2,7 @@
     "name":  "copy-code",
     "displayName":  "Copy Code",
     "description":  "Copy content from all open files or project files with configurable extensions.",
-    "version":  "0.1.19",
+    "version":  "0.1.20",
     "publisher":  "nshkrdotcom",
     "repository":  {
                        "type":  "git",
@@ -19,7 +19,8 @@
                              "onStartupFinished",
                              "onCommand:copy-code.copyAllFiles",
                              "onCommand:copy-code.copyAllProjectFiles",
-                             "onCommand:copy-code.configureExtensions"
+                             "onCommand:copy-code.configureExtensions",
+                             "onCommand:copy-code.addCustomCommand"
                          ],
     "main":  "./out/extension.js",
     "icon":  "resources/icon.png",
@@ -124,6 +125,9 @@
                     "test":  "vscode-test",
                     "package":  "vsce package"
                 },
+    "dependencies":  {
+                         "ignore":  "^5.3.0"
+                     },
     "devDependencies":  {
                             "@types/vscode":  "^1.85.0",
                             "@types/mocha":  "^10.0.6",

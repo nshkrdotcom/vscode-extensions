@@ -393,20 +393,12 @@ export function deactivate(): void {
     // Clean up resources if needed
 }
 
-
-// Minimal TreeDataProvider (no data)
-class NoDataProvider implements vscode.TreeDataProvider<string> {
-    getTreeItem(element: string): vscode.TreeItem {
-        return new vscode.TreeItem(element);
-    }
-    getChildren(element?: string): Thenable<string[]> {
-        return Promise.resolve([]); // No children
-    }
-}
-
 export function activate(context: vscode.ExtensionContext): void {
     const treeDataProvider = new ConfigTreeDataProvider(context.globalState);
     vscode.window.registerTreeDataProvider('copy-code-actions', treeDataProvider);
+
+
+    
 
     // Register commands
     context.subscriptions.push(
@@ -417,6 +409,9 @@ export function activate(context: vscode.ExtensionContext): void {
         vscode.commands.registerCommand('copy-code.copyAllProjectFiles', () => {
             copyAllProjectFiles(context);
             treeDataProvider.refresh();
+        }),
+        vscode.commands.registerCommand('copy-code.addCustomCommand', () => {
+            addCustomCopyCommand(context);
         }),
         vscode.commands.registerCommand('copy-code.configureExtensions', async () => {
             await configureExtensions(context);
