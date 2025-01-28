@@ -263,76 +263,130 @@ async function copyAllOpenFiles(context: vscode.ExtensionContext): Promise<void>
     }
 }
 
+// The file scanning logic is separated to make the main function clearer
+interface FileScanResult {
+    files: { path: string; content: string }[];
+    hasGitignore: boolean;
+}
+
+async function scanWorkspaceFiles(
+    workspaceFolders: readonly vscode.WorkspaceFolder[],
+    allowedExtensions: Set<string>
+): Promise<FileScanResult> {
+    const filesToCopy: { path: string; content: string }[] = [];
+    let hasAnyGitignore = false;
+
+    for (const folder of workspaceFolders) {
+        const { ig, hasGitignore } = await loadGitignore(folder.uri.fsPath);
+        hasAnyGitignore = hasAnyGitignore || hasGitignore;
+        
+        function searchFiles(dir: string, root: string): void {
+            const files = fs.readdirSync(dir);
+            
+            for (const file of files) {
+                const fullPath = path.join(dir, file);
+                const relativePath = path.relative(root, fullPath);
+                
+                if (hasGitignore && ig.ignores(relativePath)) {
+                    continue;
+                }
+
+                const stat = fs.statSync(fullPath);
+                if (stat.isDirectory()) {
+                    if (file === 'node_modules' || file === '.git') {
+                        continue;
+                    }
+                    searchFiles(fullPath, root);
+                } else if (stat.isFile()) {
+                    const ext = path.extname(file);
+                    if (allowedExtensions.has(ext)) {
+                        const content = fs.readFileSync(fullPath, 'utf8');
+                        filesToCopy.push({
+                            path: relativePath,
+                            content: content
+                        });
+                    }
+                }
+            }
+        }
+
+        searchFiles(folder.uri.fsPath, folder.uri.fsPath);
+    }
+
+    return {
+        files: filesToCopy,
+        hasGitignore: hasAnyGitignore
+    };
+}
+
+// Main function with sequential warning handling
 async function copyAllProjectFiles(context: vscode.ExtensionContext): Promise<void> {
     try {
+        // Initial workspace check
         const workspaceFolders = vscode.workspace.workspaceFolders;
         if (!workspaceFolders?.length) {
             vscode.window.showInformationMessage('No workspace folder open');
             return;
         }
 
+        // Get configuration and scan files
         const config = getConfig(context);
         const allowedExtensions = getAllowedExtensions(config);
-        const filesToCopy: string[] = [];
-
-        // Track if any workspace folder has a .gitignore
-        let hasAnyGitignore = false;
-
-        for (const folder of workspaceFolders) {
-            const { ig, hasGitignore } = await loadGitignore(folder.uri.fsPath);
-            hasAnyGitignore = hasAnyGitignore || hasGitignore;
-            
-            function searchFiles(dir: string, root: string): void {
-                const files = fs.readdirSync(dir);
-                
-                for (const file of files) {
-                    const fullPath = path.join(dir, file);
-                    const relativePath = path.relative(root, fullPath);
-                    
-                    // Skip if file is ignored by .gitignore (when .gitignore exists)
-                    if (hasGitignore && ig.ignores(relativePath)) {
-                        continue;
-                    }
-
-                    const stat = fs.statSync(fullPath);
-                    if (stat.isDirectory()) {
-                        // Skip common version control and dependency directories
-                        if (file === 'node_modules' || file === '.git') {
-                            continue;
-                        }
-                        searchFiles(fullPath, root);
-                    } else if (stat.isFile()) {
-                        const ext = path.extname(file);
-                        if (allowedExtensions.has(ext)) {
-                            const content = fs.readFileSync(fullPath, 'utf8');
-                            filesToCopy.push(`=== ${relativePath} ===\n${content}\n`);
-                        }
-                    }
-                }
-            }
-
-            searchFiles(folder.uri.fsPath, folder.uri.fsPath);
-        }
-
-        if (!hasAnyGitignore) {
-            // Show warning about missing .gitignore
-            const message = 'Warning: No .gitignore file found. All matching files will be included.';
-            const proceed = await vscode.window.showWarningMessage(message, 'Proceed', 'Cancel');
-            
-            if (proceed !== 'Proceed') {
-                return;
-            }
-        }
-
-        if (filesToCopy.length === 0) {
+        
+        // Scan workspace and get results
+        const scanResult = await scanWorkspaceFiles(workspaceFolders, allowedExtensions);
+        
+        // Handle no files found early
+        if (scanResult.files.length === 0) {
             vscode.window.showInformationMessage('No matching files found to copy.');
             return;
         }
 
-        await vscode.env.clipboard.writeText(filesToCopy.join('\n'));
-        vscode.window.showInformationMessage(`Copied ${filesToCopy.length} files to clipboard`);
+        // Sequential warning handling
+        
+        // 1. First warning: Missing .gitignore
+        if (!scanResult.hasGitignore) {
+            const gitignoreWarning = await vscode.window.showWarningMessage(
+                'Warning: No .gitignore file found. All matching files will be included.',
+                'Proceed',
+                'Cancel'
+            );
+            
+            if (gitignoreWarning !== 'Proceed') {
+                return;
+            }
+        }
+
+        // 2. Second warning: Too many files (if applicable)
+        const FILE_THRESHOLD = 50; // Adjust this number based on your needs
+        if (scanResult.files.length > FILE_THRESHOLD) {
+            const manyFilesWarning = await vscode.window.showWarningMessage(
+                `Warning: You are about to copy ${scanResult.files.length} files. This is more than the recommended limit of ${FILE_THRESHOLD} files.`,
+                'Proceed',
+                'Cancel'
+            );
+            
+            if (manyFilesWarning !== 'Proceed') {
+                return;
+            }
+        }
+
+        // If we get here, user has confirmed all warnings
+        // Prepare the final content
+        const finalContent = scanResult.files
+            .map(file => `=== ${file.path} ===\n${file.content}\n`)
+            .join('\n');
+
+        // Copy to clipboard
+        await vscode.env.clipboard.writeText(finalContent);
+        vscode.window.showInformationMessage(
+            `Successfully copied ${scanResult.files.length} files to clipboard`
+        );
+
     } catch (error) {
-        vscode.window.showErrorMessage(`Error: ${error instanceof Error ? error.message : String(error)}`);
+        vscode.window.showErrorMessage(
+            `Error: ${error instanceof Error ? error.message : String(error)}`
+        );
     }
 }
 
