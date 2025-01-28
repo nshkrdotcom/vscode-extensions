@@ -79,30 +79,25 @@ class ConfigTreeItem extends vscode.TreeItem {
         public readonly collapsibleState: vscode.TreeItemCollapsibleState,
         public readonly contextValue?: string,
         public readonly command?: vscode.Command,
-        public readonly type?: string
+        public readonly typeId?: string  // Store project type ID
     ) {
         super(label, collapsibleState);
         this.contextValue = contextValue;
         if (command) {
             this.command = command;
         }
-        this.iconPath = this.getIcon();
+        this.iconPath = new vscode.ThemeIcon(this.getIconName());
     }
 
-    private getIcon(): vscode.ThemeIcon | undefined {
+    private getIconName(): string {
         switch (this.contextValue) {
-            case 'copyActions':
-                return new vscode.ThemeIcon('files');
-            case 'projectTypes':
-            case 'projectType':
-                return new vscode.ThemeIcon('folder');
-            case 'blacklist':
-            case 'blacklistItem':
-                return new vscode.ThemeIcon('settings-gear');
-            case 'customExtensions':
-                return new vscode.ThemeIcon('extensions');
-            default:
-                return undefined;
+            case 'copyActions': return 'files';
+            case 'projectTypes': return 'folder';
+            case 'projectType': return this.label.startsWith('✓') ? 'folder-active' : 'folder';
+            case 'blacklist': return 'list-filter';
+            case 'blacklistItem': return 'x';
+            case 'defaultBlacklistItem': return 'circle-slash';
+            default: return 'file';
         }
     }
 }
@@ -122,38 +117,56 @@ class ConfigTreeDataProvider implements vscode.TreeDataProvider<ConfigTreeItem> 
     }
 
     async getChildren(element?: ConfigTreeItem): Promise<ConfigTreeItem[]> {
-        console.log('getChildren called with element:', element?.contextValue);
         const currentConfig = this.getConfig();
-        console.log('Current config:', currentConfig);
 
         if (!element) {
-            return [
-                new ConfigTreeItem(
-                    'Copy Actions',
-                    vscode.TreeItemCollapsibleState.Expanded,
-                    'copyActions'
-                ),
-                new ConfigTreeItem(
-                    'Project Types',
-                    vscode.TreeItemCollapsibleState.Expanded,
-                    'projectTypes'
-                ),
-                new ConfigTreeItem(
-                    'Custom Extensions',
-                    vscode.TreeItemCollapsibleState.Expanded,
-                    'customExtensions'
-                ),
-                new ConfigTreeItem(
-                    'Blacklisted Files',
-                    vscode.TreeItemCollapsibleState.Expanded,
-                    'blacklist'
-                )
-            ];
+            return this.getRootItems();
         }
-
-        console.log('Processing children for:', element.contextValue);
         
         switch (element.contextValue) {
+            case 'projectTypes':
+                return this.getProjectTypeItems(currentConfig);
+                
+            case 'projectType':
+                if (element.typeId) {
+                    console.log(`Loading blacklist for ${element.typeId}`);
+                    const defaultBlacklist = DEFAULT_BLACKLIST[element.typeId] || [];
+                    return defaultBlacklist.map(pattern => 
+                        new ConfigTreeItem(
+                            `${pattern} (default)`,
+                            vscode.TreeItemCollapsibleState.None,
+                            'defaultBlacklistItem'
+                        )
+                    );
+                }
+                return [];
+                
+            case 'blacklist':
+                const customItems = (currentConfig.customBlacklist || []).map(pattern => 
+                    new ConfigTreeItem(
+                        pattern,
+                        vscode.TreeItemCollapsibleState.None,
+                        'blacklistItem',
+                        {
+                            command: 'copy-code.removeBlacklistPattern',
+                            title: 'Remove Pattern',
+                            arguments: [pattern]
+                        }
+                    )
+                );
+                
+                customItems.push(new ConfigTreeItem(
+                    '+ Add Pattern',
+                    vscode.TreeItemCollapsibleState.None,
+                    'addBlacklist',
+                    {
+                        command: 'copy-code.addBlacklistPattern',
+                        title: 'Add Pattern'
+                    }
+                ));
+                
+                return customItems;
+
             case 'copyActions':
                 return [
                     new ConfigTreeItem(
@@ -176,19 +189,6 @@ class ConfigTreeDataProvider implements vscode.TreeDataProvider<ConfigTreeItem> 
                     )
                 ];
 
-            case 'projectTypes':
-                return Object.keys(DEFAULT_EXTENSIONS).map(type => {
-                    const enabled = currentConfig.enabledProjectTypes.includes(type);
-                    const defaultBlacklist = DEFAULT_BLACKLIST[type] || [];
-                    return new ConfigTreeItem(
-                        `${enabled ? '✓' : '○'} ${type}`,
-                        defaultBlacklist.length > 0 ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None,
-                        'projectType',
-                        undefined,
-                        type
-                    );
-                });
-
             case 'customExtensions':
                 console.log('Custom extensions:', currentConfig.customExtensions);
                 const extItems = (currentConfig.customExtensions || []).map(ext => 
@@ -209,46 +209,36 @@ class ConfigTreeDataProvider implements vscode.TreeDataProvider<ConfigTreeItem> 
                 ));
                 return extItems;
 
-            case 'projectType':
-                console.log('Showing blacklist for type:', element.type);
-                const defaultBlacklist = DEFAULT_BLACKLIST[element.type || ''] || [];
-                console.log('Default blacklist:', defaultBlacklist);
-                return defaultBlacklist.map(pattern => 
-                    new ConfigTreeItem(
-                        pattern,
-                        vscode.TreeItemCollapsibleState.None,
-                        'defaultBlacklistItem'
-                    )
-                );
-
-            case 'blacklist':
-                console.log('Custom blacklist:', currentConfig.customBlacklist);
-                const items = (currentConfig.customBlacklist || []).map(pattern => 
-                    new ConfigTreeItem(
-                        pattern,
-                        vscode.TreeItemCollapsibleState.None,
-                        'blacklistItem',
-                        {
-                            command: 'copy-code.removeBlacklistPattern',
-                            title: 'Remove from Blacklist',
-                            arguments: [pattern]
-                        }
-                    )
-                );
-                items.push(new ConfigTreeItem(
-                    '+ Add Blacklist Pattern',
-                    vscode.TreeItemCollapsibleState.None,
-                    'addBlacklist',
-                    {
-                        command: 'copy-code.addBlacklistPattern',
-                        title: 'Add Blacklist Pattern'
-                    }
-                ));
-                return items;
-
             default:
                 return [];
         }
+    }
+
+    private getRootItems(): ConfigTreeItem[] {
+        return [
+            new ConfigTreeItem('Copy Actions', vscode.TreeItemCollapsibleState.Expanded, 'copyActions'),
+            new ConfigTreeItem('Project Types', vscode.TreeItemCollapsibleState.Expanded, 'projectTypes'),
+            new ConfigTreeItem('Custom Extensions', vscode.TreeItemCollapsibleState.Expanded, 'customExtensions'), 
+            new ConfigTreeItem('Blacklisted Files', vscode.TreeItemCollapsibleState.Expanded, 'blacklist')
+        ];
+     }
+
+    private getProjectTypeItems(config: CopyCodeConfig): ConfigTreeItem[] {
+        return Object.keys(DEFAULT_EXTENSIONS).map(type => {
+            const enabled = config.enabledProjectTypes.includes(type);
+            const defaultBlacklist = DEFAULT_BLACKLIST[type] || [];
+            return new ConfigTreeItem(
+                `${enabled ? '✓' : '○'} ${type} (${defaultBlacklist.length} rules)`,
+                defaultBlacklist.length > 0 ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None,
+                'projectType',
+                {
+                    command: 'copy-code.toggleProjectType',
+                    title: 'Toggle Project Type',
+                    arguments: [type]
+                },
+                type
+            );
+        });
     }
 
     public getConfig(): CopyCodeConfig {
