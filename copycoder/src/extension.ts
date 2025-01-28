@@ -356,24 +356,34 @@ function getAllowedExtensions(config: CopyCodeConfig): Set<string> {
 // Function to copy content from all open files
 async function copyAllOpenFiles(context: vscode.ExtensionContext): Promise<void> {
     try {
-        // Use visible text editors as the ONLY source of truth
+        // Comprehensive approach: combine visible editors and text documents
         const visibleEditors = vscode.window.visibleTextEditors;
+        const textDocuments = vscode.workspace.textDocuments;
 
-        // Strictly filter documents from visible editors
-        const documentsToCopy = visibleEditors
-            .map(editor => editor.document)
-            .filter(doc => 
-                doc.uri.scheme === 'file' &&      // Ensure it's a real file
-                !doc.isUntitled &&                // Not a temporary/unsaved document
-                doc.getText().trim().length > 0   // Has actual content
-            );
+        // Create a set to ensure unique documents
+        const documentsToCapture = new Set(
+            [...visibleEditors.map(editor => editor.document), ...textDocuments]
+        );
 
-        if (documentsToCopy.length === 0) {
-            vscode.window.showInformationMessage('No open files to copy.');
+        // Strict filtering with multiple validation criteria
+        const validDocuments = Array.from(documentsToCapture).filter(doc => 
+            doc &&                               // Ensure document exists
+            !doc.isUntitled &&                   // Not a temporary document
+            doc.uri.scheme === 'file' &&         // Must be a real file
+            doc.getText().trim().length > 0      // Has non-empty content
+        );
+
+        if (validDocuments.length === 0) {
+            vscode.window.showInformationMessage('No files to copy.');
             return;
         }
         
-        const finalContent = documentsToCopy.map(doc => {
+        // Ensure consistent ordering by sorting documents
+        const sortedDocuments = validDocuments.sort((a, b) => 
+            a.fileName.localeCompare(b.fileName)
+        );
+
+        const finalContent = sortedDocuments.map(doc => {
             const relativePath = vscode.workspace.asRelativePath(doc.fileName);
             return `=== ${relativePath} ===\n${doc.getText()}\n`;
         }).join('\n');
@@ -381,12 +391,12 @@ async function copyAllOpenFiles(context: vscode.ExtensionContext): Promise<void>
         await vscode.env.clipboard.writeText(finalContent);
         
         vscode.window.showInformationMessage(
-            `Copied content from ${documentsToCopy.length} visible file(s) to clipboard.`
+            `Copied content from ${sortedDocuments.length} file(s) to clipboard.`
         );
 
     } catch (error) {
-        console.error('Error in copyAllOpenFiles:', error);
-        vscode.window.showErrorMessage(`Failed to copy files: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        console.error('Catastrophic error in copyAllOpenFiles:', error);
+        vscode.window.showErrorMessage(`Completely failed to copy files: ${error instanceof Error ? error.message : 'Unknown catastrophic error'}`);
     }
 }
 
