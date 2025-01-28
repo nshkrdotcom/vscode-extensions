@@ -356,64 +356,24 @@ function getAllowedExtensions(config: CopyCodeConfig): Set<string> {
 // Function to copy content from all open files
 async function copyAllOpenFiles(context: vscode.ExtensionContext): Promise<void> {
     try {
-        // Comprehensive diagnostic logging
-        console.log('=== DEBUG: Copy All Open Files ===');
-        
-        // Log ALL text documents VSCode sees
-        console.log('Total text documents:', vscode.workspace.textDocuments.length);
-        vscode.workspace.textDocuments.forEach((doc, index) => {
-            console.log(`Document ${index + 1}:`, {
-                fileName: doc.fileName,
-                uri: doc.uri.toString(),
-                isUntitled: doc.isUntitled,
-                isDirty: doc.isDirty,
-                languageId: doc.languageId,
-                lineCount: doc.lineCount,
-                contentLength: doc.getText().length
-            });
-        });
-
-        // Log visible text editors
+        // Use visible text editors as the ONLY source of truth
         const visibleEditors = vscode.window.visibleTextEditors;
-        console.log('Visible text editors:', visibleEditors.length);
-        visibleEditors.forEach((editor, index) => {
-            console.log(`Editor ${index + 1}:`, {
-                document: {
-                    fileName: editor.document.fileName,
-                    uri: editor.document.uri.toString(),
-                    contentLength: editor.document.getText().length
-                }
-            });
-        });
 
-        // Extremely strict filtering
-        const textDocuments = vscode.workspace.textDocuments.filter(doc => {
-            const isValid = 
-                !doc.isUntitled &&               // Not an unsaved document
-                doc.uri.scheme === 'file' &&     // Actual file on disk
-                doc.getText().trim().length > 0  // Has non-empty content
-            ;
+        // Strictly filter documents from visible editors
+        const documentsToCopy = visibleEditors
+            .map(editor => editor.document)
+            .filter(doc => 
+                doc.uri.scheme === 'file' &&      // Ensure it's a real file
+                !doc.isUntitled &&                // Not a temporary/unsaved document
+                doc.getText().trim().length > 0   // Has actual content
+            );
 
-            if (!isValid) {
-                console.log('Filtered out document:', {
-                    fileName: doc.fileName,
-                    isUntitled: doc.isUntitled,
-                    scheme: doc.uri.scheme,
-                    contentLength: doc.getText().length
-                });
-            }
-
-            return isValid;
-        });
-
-        console.log('Filtered documents count:', textDocuments.length);
-
-        if (textDocuments.length === 0) {
-            vscode.window.showInformationMessage('No valid open files found.');
+        if (documentsToCopy.length === 0) {
+            vscode.window.showInformationMessage('No open files to copy.');
             return;
         }
         
-        const finalContent = textDocuments.map(doc => {
+        const finalContent = documentsToCopy.map(doc => {
             const relativePath = vscode.workspace.asRelativePath(doc.fileName);
             return `=== ${relativePath} ===\n${doc.getText()}\n`;
         }).join('\n');
@@ -421,7 +381,7 @@ async function copyAllOpenFiles(context: vscode.ExtensionContext): Promise<void>
         await vscode.env.clipboard.writeText(finalContent);
         
         vscode.window.showInformationMessage(
-            `Copied content from ${textDocuments.length} files to clipboard.`
+            `Copied content from ${documentsToCopy.length} visible file(s) to clipboard.`
         );
 
     } catch (error) {
