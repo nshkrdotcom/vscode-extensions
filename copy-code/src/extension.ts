@@ -177,18 +177,15 @@ class ConfigTreeDataProvider implements vscode.TreeDataProvider<ConfigTreeItem> 
                 ];
 
             case 'projectTypes':
-                console.log('Project types config:', currentConfig.enabledProjectTypes);
                 return Object.keys(DEFAULT_EXTENSIONS).map(type => {
                     const enabled = currentConfig.enabledProjectTypes.includes(type);
+                    const defaultBlacklist = DEFAULT_BLACKLIST[type] || [];
                     return new ConfigTreeItem(
                         `${enabled ? '✓' : '○'} ${type}`,
-                        vscode.TreeItemCollapsibleState.None,
+                        defaultBlacklist.length > 0 ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None,
                         'projectType',
-                        {
-                            command: 'copy-code.toggleProjectType',
-                            title: 'Toggle Project Type',
-                            arguments: [type]
-                        }
+                        undefined,
+                        type
                     );
                 });
 
@@ -212,16 +209,33 @@ class ConfigTreeDataProvider implements vscode.TreeDataProvider<ConfigTreeItem> 
                 ));
                 return extItems;
 
-            case 'blacklist':
-                console.log('Custom blacklist:', currentConfig.customBlacklist);
-                const blacklistItems = (currentConfig.customBlacklist || []).map(pattern => 
+            case 'projectType':
+                console.log('Showing blacklist for type:', element.type);
+                const defaultBlacklist = DEFAULT_BLACKLIST[element.type || ''] || [];
+                console.log('Default blacklist:', defaultBlacklist);
+                return defaultBlacklist.map(pattern => 
                     new ConfigTreeItem(
                         pattern,
                         vscode.TreeItemCollapsibleState.None,
-                        'blacklistItem'
+                        'defaultBlacklistItem'
                     )
                 );
-                blacklistItems.push(new ConfigTreeItem(
+
+            case 'blacklist':
+                console.log('Custom blacklist:', currentConfig.customBlacklist);
+                const items = (currentConfig.customBlacklist || []).map(pattern => 
+                    new ConfigTreeItem(
+                        pattern,
+                        vscode.TreeItemCollapsibleState.None,
+                        'blacklistItem',
+                        {
+                            command: 'copy-code.removeBlacklistPattern',
+                            title: 'Remove from Blacklist',
+                            arguments: [pattern]
+                        }
+                    )
+                );
+                items.push(new ConfigTreeItem(
                     '+ Add Blacklist Pattern',
                     vscode.TreeItemCollapsibleState.None,
                     'addBlacklist',
@@ -230,7 +244,7 @@ class ConfigTreeDataProvider implements vscode.TreeDataProvider<ConfigTreeItem> 
                         title: 'Add Blacklist Pattern'
                     }
                 ));
-                return blacklistItems;
+                return items;
 
             default:
                 return [];
@@ -239,12 +253,17 @@ class ConfigTreeDataProvider implements vscode.TreeDataProvider<ConfigTreeItem> 
 
     public getConfig(): CopyCodeConfig {
         const savedConfig = this.config.get<CopyCodeConfig>('copyCodeConfig');
-        console.log('Retrieved config:', savedConfig);
-        return savedConfig || {
+        const defaultConfig = {
             enabledProjectTypes: ['powershell', 'python', 'node'],
             customExtensions: [],
             customBlacklist: []
         };
+        
+        return savedConfig ? {
+            ...defaultConfig,
+            ...savedConfig,
+            customBlacklist: savedConfig.customBlacklist || []
+        } : defaultConfig;
     }
 
     public async saveConfig(newConfig: CopyCodeConfig): Promise<void> {
