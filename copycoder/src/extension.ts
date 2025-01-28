@@ -3,6 +3,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import ignore from 'ignore';
 
+import { ClipboardProcessor } from './clipboardProcessor';
+
 // Default file extension whitelist for different project types
 const DEFAULT_EXTENSIONS: { [key: string]: string[] } = {
     'powershell': ['.ps1', '.psm1', '.psd1'],
@@ -715,6 +717,12 @@ export function activate(context: vscode.ExtensionContext): void {
                 currentConfig.customBlacklist.push(pattern);
                 await treeDataProvider.saveConfig(currentConfig);
             }
+        })
+    );
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand('copycoder.parseClipboard', () => {
+            ClipboardProcessor.processClipboardContent();
         })
     );
 

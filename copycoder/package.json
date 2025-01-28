@@ -61,7 +61,13 @@
                                              "title":  "Add Custom Copy Command",
                                              "category":  "Copy Code",
                                              "icon":  "$(export)"
-                                         }
+                                         },
+                                         {
+                                            "command": "copycoder.parseClipboard",
+                                            "title": "Parse Code Blocks from Clipboard",
+                                            "category": "Copy Code",
+                                            "icon": "$(clippy)"
+                                        }
                                      ],
                         "viewsContainers":  {
                                                 "activitybar":  [
@@ -86,8 +92,13 @@
                                                              "command":  "copycoder.copyAllFiles",
                                                              "when":  "view == copycoder-actions",
                                                              "group":  "navigation",
-                                                             "icon":  "resources/icon.png"
-                                                         }
+                                                             "icon":  "$(files-alt)"
+                                                         },
+                                                         {
+                                                            "command": "copycoder.parseClipboard",
+                                                            "when": "view == copycoder-actions",
+                                                            "group": "navigation@12"
+                                                        }
                                                      ],
                                       "editor/title":  [
                                                            {
