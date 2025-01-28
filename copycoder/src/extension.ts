@@ -357,16 +357,16 @@ function getAllowedExtensions(config: CopyCodeConfig): Set<string> {
 async function copyAllOpenFiles(context: vscode.ExtensionContext): Promise<void> {
     try {
         // Comprehensive approach: combine visible editors and text documents
-        const visibleEditors = vscode.window.visibleTextEditors;
+        //const visibleEditors = [];//vscode.window.visibleTextEditors;
         const textDocuments = vscode.workspace.textDocuments;
 
         // Create a set to ensure unique documents
-        const documentsToCapture = new Set(
-            [...visibleEditors.map(editor => editor.document), ...textDocuments]
-        );
+        //const documentsToCapture = new Set(
+        //    [...visibleEditors.map(editor => editor.document), ...textDocuments]
+        //);
 
         // Strict filtering with multiple validation criteria
-        const validDocuments = Array.from(documentsToCapture).filter(doc => 
+        const validDocuments = Array.from(textDocuments).filter(doc => 
             doc &&                               // Ensure document exists
             !doc.isUntitled &&                   // Not a temporary document
             doc.uri.scheme === 'file' &&         // Must be a real file
