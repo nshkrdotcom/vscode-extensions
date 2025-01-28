@@ -357,9 +357,13 @@ function getAllowedExtensions(config: CopyCodeConfig): Set<string> {
 async function copyAllOpenFiles(context: vscode.ExtensionContext): Promise<void> {
     try {
         const textDocuments = vscode.workspace.textDocuments.filter(doc => {
-            // Only include visibly open documents
-            return doc.isUntitled === false && 
-                   doc.getText().trim().length > 0  
+            // Tighten the filter to ensure only current, visible, non-empty files
+            return !doc.isUntitled && 
+                   doc.uri.scheme === 'file' &&  // Ensure it's a file on disk
+                   doc.getText().trim().length > 0 &&
+                   vscode.window.visibleTextEditors.some(
+                       editor => editor.document.uri.toString() === doc.uri.toString()
+                   );
         });
 
         if (textDocuments.length === 0) {
