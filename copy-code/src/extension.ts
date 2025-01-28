@@ -79,25 +79,48 @@ class ConfigTreeItem extends vscode.TreeItem {
         public readonly collapsibleState: vscode.TreeItemCollapsibleState,
         public readonly contextValue?: string,
         public readonly command?: vscode.Command,
-        public readonly typeId?: string  // Store project type ID
+        public readonly typeId?: string
     ) {
         super(label, collapsibleState);
         this.contextValue = contextValue;
         if (command) {
             this.command = command;
         }
-        this.iconPath = new vscode.ThemeIcon(this.getIconName());
+        
+        // Set up the icon and theme color
+        const iconInfo = this.getIconInfo();
+        this.iconPath = new vscode.ThemeIcon(iconInfo.name, iconInfo.color);
     }
 
-    private getIconName(): string {
+    private getIconInfo(): { name: string; color?: vscode.ThemeColor } {
         switch (this.contextValue) {
-            case 'copyActions': return 'files';
-            case 'projectTypes': return 'folder';
-            case 'projectType': return this.label.startsWith('✓') ? 'folder-active' : 'folder';
-            case 'blacklist': return 'list-filter';
-            case 'blacklistItem': return 'x';
-            case 'defaultBlacklistItem': return 'circle-slash';
-            default: return 'file';
+            case 'copyActions':
+                return { name: 'files' };
+            case 'projectTypes':
+                return { name: 'folder' };
+            case 'projectType':
+                return { 
+                    name: this.label.startsWith('✓') ? 'folder-active' : 'folder'
+                };
+            case 'blacklist':
+                return { name: 'list-filter' };
+            case 'blacklistItem':
+                return { 
+                    name: 'circle-slash',
+                    color: new vscode.ThemeColor('errorForeground')  // Uses VS Code's built-in error color
+                };
+            case 'defaultBlacklistItem':
+                return { 
+                    name: 'circle-slash',
+                    color: new vscode.ThemeColor('errorForeground')
+                };
+            case 'customExtension':
+                return { name: 'symbol-file' };
+            case 'addCustom':
+            case 'addBlacklist':
+                return { name: 'add' };
+            default:
+                return { name: 'file' };
         }
     }
 }
@@ -131,30 +154,18 @@ class ConfigTreeDataProvider implements vscode.TreeDataProvider<ConfigTreeItem> 
                 if (element.typeId) {
                     console.log(`Loading blacklist for ${element.typeId}`);
                     const defaultBlacklist = DEFAULT_BLACKLIST[element.typeId] || [];
-                    return defaultBlacklist.map(pattern => 
-                        new ConfigTreeItem(
-                            `${pattern} (default)`,
-                            vscode.TreeItemCollapsibleState.None,
-                            'defaultBlacklistItem'
-                        )
-                    );
+                    // Use our helper function for default blacklist items
+                    return defaultBlacklist.map(pattern => this.getBlacklistItems(pattern, true));
                 }
                 return [];
-                
+            
             case 'blacklist':
                 const customItems = (currentConfig.customBlacklist || []).map(pattern => 
-                    new ConfigTreeItem(
-                        pattern,
-                        vscode.TreeItemCollapsibleState.None,
-                        'blacklistItem',
-                        {
-                            command: 'copy-code.removeBlacklistPattern',
-                            title: 'Remove Pattern',
-                            arguments: [pattern]
-                        }
-                    )
+                    // Use our helper function for custom blacklist items
+                    this.getBlacklistItems(pattern, false)
                 );
                 
+                // Add the "Add Pattern" button at the end
                 customItems.push(new ConfigTreeItem(
                     '+ Add Pattern',
                     vscode.TreeItemCollapsibleState.None,
@@ -223,12 +234,14 @@ class ConfigTreeDataProvider implements vscode.TreeDataProvider<ConfigTreeItem> 
         ];
      }
 
-    private getProjectTypeItems(config: CopyCodeConfig): ConfigTreeItem[] {
+     private getProjectTypeItems(config: CopyCodeConfig): ConfigTreeItem[] {
         return Object.keys(DEFAULT_EXTENSIONS).map(type => {
             const enabled = config.enabledProjectTypes.includes(type);
             const defaultBlacklist = DEFAULT_BLACKLIST[type] || [];
+            const label = `${enabled ? '✓' : '○'} ${type}${defaultBlacklist.length > 0 ? ` (${defaultBlacklist.length} blocked)` : ''}`;
+            
             return new ConfigTreeItem(
-                `${enabled ? '✓' : '○'} ${type} (${defaultBlacklist.length} rules)`,
+                label,
                 defaultBlacklist.length > 0 ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None,
                 'projectType',
                 {
@@ -239,6 +252,25 @@ class ConfigTreeDataProvider implements vscode.TreeDataProvider<ConfigTreeItem> 
                 type
             );
         });
+    }
+
+    private getBlacklistItems(pattern: string, isDefault: boolean = true): ConfigTreeItem {
+        // Create a descriptive label that shows if it's a default rule
+        const label = isDefault ? `${pattern} (default)` : pattern;
+        
+        // For custom blacklist items, we want to allow removal
+        const command = !isDefault ? {
+            command: 'copy-code.removeBlacklistPattern',
+            title: 'Remove Pattern',
+            arguments: [pattern]
+        } : undefined;
+
+        return new ConfigTreeItem(
+            label,
+            vscode.TreeItemCollapsibleState.None,
+            isDefault ? 'defaultBlacklistItem' : 'blacklistItem',
+            command
+        );
     }
 
     public getConfig(): CopyCodeConfig {
