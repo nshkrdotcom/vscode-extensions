@@ -2,26 +2,147 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 
-// Interface for the extension's configuration
+// Default file extension whitelist for different project types
+const DEFAULT_EXTENSIONS: { [key: string]: string[] } = {
+    'powershell': ['.ps1', '.psm1', '.psd1'],
+    'terraform': ['.tf', '.tfvars'],
+    'bash': ['.sh', '.bash', '.zsh'],
+    'php': ['.php', '.phtml', '.php3', '.php4', '.php5', '.php7', '.php8'],
+    'mysql': ['.sql', '.mysql'],
+    'postgres': ['.sql', '.pgsql'],
+    'elixir': ['.ex', '.exs'],
+    'python': ['.py', '.pyw', '.pyi'],
+    'node': ['.js', '.mjs', '.cjs', '.ts', '.tsx', '.jsx', '.json', '.node'],
+    'vscode': ['.json', '.yml', '.yaml'],
+    'wsl2': ['.sh', '.bash', '.zsh', '.ps1']
+};
+
 interface CopyCodeConfig {
     enabledProjectTypes: string[];
     customExtensions: string[];
 }
 
-// Default file extensions for supported project types
-const DEFAULT_EXTENSIONS: Record<string, string[]> = {
-    powershell: ['.ps1', '.psm1', '.psd1'],
-    terraform: ['.tf', '.tfvars'],
-    bash: ['.sh', '.bash', '.zsh'],
-    php: ['.php', '.phtml', '.php3', '.php4', '.php5', '.php7', '.php8'],
-    mysql: ['.sql', '.mysql'],
-    postgres: ['.sql', '.pgsql'],
-    elixir: ['.ex', '.exs'],
-    python: ['.py', '.pyw', '.pyi'],
-    node: ['.js', '.mjs', '.cjs', '.ts', '.tsx', '.jsx', '.json', '.node'],
-    vscode: ['.json', '.yml', '.yaml'],
-    wsl2: ['.sh', '.bash', '.zsh', '.ps1']
-};
+class ConfigTreeItem extends vscode.TreeItem {
+    constructor(
+        public readonly label: string,
+        public readonly collapsibleState: vscode.TreeItemCollapsibleState,
+        public readonly contextValue?: string,
+        public readonly command?: vscode.Command
+    ) {
+        super(label, collapsibleState);
+        this.contextValue = contextValue;
+        if (command) {
+            this.command = command;
+        }
+    }
+}
+
+class ConfigTreeDataProvider implements vscode.TreeDataProvider<ConfigTreeItem> {
+    private _onDidChangeTreeData = new vscode.EventEmitter<ConfigTreeItem | undefined>();
+    readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
+
+    constructor(private config: vscode.Memento) {}
+
+    refresh(): void {
+        this._onDidChangeTreeData.fire(undefined);
+    }
+
+    getTreeItem(element: ConfigTreeItem): vscode.TreeItem {
+        return element;
+    }
+
+    getChildren(element?: ConfigTreeItem): Thenable<ConfigTreeItem[]> {
+        if (!element) {
+            const currentConfig = this.getConfig();
+            const items: ConfigTreeItem[] = [];
+
+            items.push(new ConfigTreeItem(
+                'Enabled Project Types',
+                vscode.TreeItemCollapsibleState.Expanded,
+                'projectTypes'
+            ));
+
+            items.push(new ConfigTreeItem(
+                'Custom Extensions',
+                vscode.TreeItemCollapsibleState.Expanded,
+                'customExtensions'
+            ));
+
+            return Promise.resolve(items);
+        }
+
+        const currentConfig = this.getConfig();
+
+        if (element.contextValue === 'projectTypes') {
+            return Promise.resolve(
+                Object.keys(DEFAULT_EXTENSIONS).map(type => {
+                    const enabled = currentConfig.enabledProjectTypes.includes(type);
+                    return new ConfigTreeItem(
+                        `${enabled ? '✓ ' : '○ '}${type}`,
+                        vscode.TreeItemCollapsibleState.None,
+                        'projectType',
+                        {
+                            command: 'copy-code.toggleProjectType',
+                            title: 'Toggle Project Type',
+                            arguments: [type]
+                        }
+                    );
+                })
+            );
+        }
+
+        if (element.contextValue === 'customExtensions') {
+            const items = currentConfig.customExtensions.map(ext => 
+                new ConfigTreeItem(
+                    ext,
+                    vscode.TreeItemCollapsibleState.None,
+                    'customExtension'
+                )
+            );
+            items.push(new ConfigTreeItem(
+                'Add Custom Extension',
+                vscode.TreeItemCollapsibleState.None,
+                'addCustom',
+                {
+                    command: 'copy-code.addCustomExtension',
+                    title: 'Add Custom Extension'
+                }
+            ));
+            return Promise.resolve(items);
+        }
+
+        return Promise.resolve([]);
+    }
+    
+    public getConfig(): CopyCodeConfig {
+        const savedConfig = this.config.get<CopyCodeConfig>('copyCodeConfig');
+        return savedConfig || {
+            enabledProjectTypes: ['powershell', 'python', 'node'],
+            customExtensions: []
+        };
+    }
+
+    public async saveConfig(newConfig: CopyCodeConfig): Promise<void> {
+        await this.config.update('copyCodeConfig', newConfig);
+        this.refresh();
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // Utility function to get the extension's configuration
 function getConfig(context: vscode.ExtensionContext): CopyCodeConfig {
@@ -177,86 +298,6 @@ async function configureExtensions(context: vscode.ExtensionContext): Promise<vo
     }
 }
 
-
-
-
-
-class ConfigTreeItem extends vscode.TreeItem {
-    constructor(
-        public readonly label: string,
-        public readonly collapsibleState: vscode.TreeItemCollapsibleState,
-        public readonly command?: vscode.Command
-    ) {
-        super(label, collapsibleState);
-    }
-}
-
-class ConfigTreeDataProvider implements vscode.TreeDataProvider<ConfigTreeItem> {
-    private _onDidChangeTreeData: vscode.EventEmitter<ConfigTreeItem | undefined | null | void> = new vscode.EventEmitter<ConfigTreeItem | undefined | null | void>();
-    readonly onDidChangeTreeData: vscode.Event<ConfigTreeItem | undefined | null | void> = this._onDidChangeTreeData.event;
-
-    constructor(private context: vscode.ExtensionContext) {}
-
-    refresh(): void {
-        this._onDidChangeTreeData.fire();
-    }
-
-    getTreeItem(element: ConfigTreeItem): vscode.TreeItem {
-        return element;
-    }
-
-    async getChildren(element?: ConfigTreeItem): Promise<ConfigTreeItem[]> {
-        if (!element) {
-            // Root level - show main categories
-            return [
-                new ConfigTreeItem('Copy Actions', vscode.TreeItemCollapsibleState.Expanded),
-                new ConfigTreeItem('Configuration', vscode.TreeItemCollapsibleState.Expanded)
-            ];
-        }
-
-        if (element.label === 'Copy Actions') {
-            return [
-                new ConfigTreeItem('Copy All Open Files', vscode.TreeItemCollapsibleState.None, {
-                    command: 'copy-code.copyAllFiles',
-                    title: 'Copy All Open Files'
-                }),
-                new ConfigTreeItem('Copy All Project Files', vscode.TreeItemCollapsibleState.None, {
-                    command: 'copy-code.copyAllProjectFiles',
-                    title: 'Copy All Project Files'
-                })
-            ];
-        }
-
-        if (element.label === 'Configuration') {
-            const config = getConfig(this.context);
-            const items: ConfigTreeItem[] = [];
-            
-            // Add Configure button
-            items.push(new ConfigTreeItem('Configure Extensions', vscode.TreeItemCollapsibleState.None, {
-                command: 'copy-code.configureExtensions',
-                title: 'Configure Extensions'
-            }));
-
-            // Show current configuration
-            items.push(new ConfigTreeItem(
-                'Enabled Project Types',
-                vscode.TreeItemCollapsibleState.Expanded
-            ));
-
-            return items;
-        }
-
-        if (element.label === 'Enabled Project Types') {
-            const config = getConfig(this.context);
-            return config.enabledProjectTypes.map(type => 
-                new ConfigTreeItem(type, vscode.TreeItemCollapsibleState.None)
-            );
-        }
-
-        return [];
-    }
-}
-
 // Deactivate function - called when the extension is deactivated
 export function deactivate(): void {
     // Clean up resources if needed
@@ -274,25 +315,57 @@ class NoDataProvider implements vscode.TreeDataProvider<string> {
 }
 
 export function activate(context: vscode.ExtensionContext): void {
-    console.log('Congratulations, your extension "copy-code" is now active!');
-
-    // Register Tree Data Provider with the new implementation
-    const treeDataProvider = new ConfigTreeDataProvider(context);
+    const treeDataProvider = new ConfigTreeDataProvider(context.globalState);
     vscode.window.registerTreeDataProvider('copy-code-actions', treeDataProvider);
 
     // Register commands
     context.subscriptions.push(
         vscode.commands.registerCommand('copy-code.copyAllFiles', () => {
             copyAllOpenFiles(context);
-            treeDataProvider.refresh(); // Refresh view after operation
+            treeDataProvider.refresh(); 
         }),
         vscode.commands.registerCommand('copy-code.copyAllProjectFiles', () => {
             copyAllProjectFiles(context);
-            treeDataProvider.refresh(); // Refresh view after operation
+            treeDataProvider.refresh();
         }),
         vscode.commands.registerCommand('copy-code.configureExtensions', async () => {
             await configureExtensions(context);
-            treeDataProvider.refresh(); // Refresh view after configuration changes
+            treeDataProvider.refresh();
         })
     );
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand('copy-code.toggleProjectType', async (type: string) => {
+            const currentConfig = treeDataProvider.getConfig();
+            const index = currentConfig.enabledProjectTypes.indexOf(type);
+            
+            if (index === -1) {
+                currentConfig.enabledProjectTypes.push(type);
+            } else {
+                currentConfig.enabledProjectTypes.splice(index, 1);
+            }
+            
+            await treeDataProvider.saveConfig(currentConfig);
+        }),
+        
+        vscode.commands.registerCommand('copy-code.addCustomExtension', async () => {
+            const extension = await vscode.window.showInputBox({
+                prompt: 'Enter file extension (e.g., .txt)',
+                validateInput: value => {
+                    if (!value.startsWith('.')) {
+                        return 'Extension must start with a dot (.)';
+                    }
+                    return null;
+                }
+            });
+            
+            if (extension) {
+                const currentConfig = treeDataProvider.getConfig();
+                currentConfig.customExtensions.push(extension);
+                await treeDataProvider.saveConfig(currentConfig);
+            }
+        })
+    );
+
+    console.log('Congratulations, your extension "copy-code" is now active!');
 }

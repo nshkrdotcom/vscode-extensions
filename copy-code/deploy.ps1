@@ -39,3 +39,4 @@ wsl -d udev2404 code --install-extension "$wslPath/$($vsixFile.Name)"
 
 git add ../.
 git commit -m "Version: ($vsixFile.Name)"
+git push

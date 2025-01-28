@@ -1,20 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
-    <!-- Background -->
-    <rect width="128" height="128" rx="12" fill="#2D2D30"/>
-    
-    <!-- Document Stack -->
-    <g transform="translate(24, 24)">
-        <!-- Back Document -->
-        <rect x="8" y="8" width="64" height="72" rx="4" fill="#4B4B4B"/>
-        <!-- Middle Document -->
-        <rect x="4" y="4" width="64" height="72" rx="4" fill="#686868"/>
-        <!-- Front Document -->
-        <rect x="0" y="0" width="64" height="72" rx="4" fill="#007ACC"/>
-        
-        <!-- Copy Symbol -->
-        <rect x="16" y="16" width="32" height="40" rx="2" fill="#FFFFFF" opacity="0.9"/>
-        <rect x="20" y="24" width="24" height="4" fill="#007ACC"/>
-        <rect x="20" y="32" width="24" height="4" fill="#007ACC"/>
-        <rect x="20" y="40" width="16" height="4" fill="#007ACC"/>
+    <rect width="128" height="128" rx="14" fill="#1E1E1E"/>
+    <g transform="translate(24,24)">
+        <rect x="0" y="0" width="80" height="80" rx="8" fill="#3794FF"/>
+        <path d="M20 20h40v8H20zM20 36h40v8H20zM20 52h40v8H20z" fill="#FFF"/>
+        <path d="M70 20l-10 4v32l10 4V20z" fill="#000" opacity="0.3"/>
     </g>
 </svg>
