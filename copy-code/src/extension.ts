@@ -359,8 +359,7 @@ async function copyAllOpenFiles(context: vscode.ExtensionContext): Promise<void>
         const textDocuments = vscode.workspace.textDocuments.filter(doc => {
             // Only include visibly open documents
             return doc.isUntitled === false && 
-                   doc.getText().trim().length > 0 &&
-                   !doc.isClosed
+                   doc.getText().trim().length > 0  
         });
 
         if (textDocuments.length === 0) {
