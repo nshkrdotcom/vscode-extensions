@@ -9,20 +9,22 @@ interface CustomCopyCommand {
     description?: string;
 }
 
-async function loadGitignore(workspaceRoot: string): Promise<ReturnType<typeof ignore>> {
+async function loadGitignore(workspaceRoot: string): Promise<{ ig: ReturnType<typeof ignore>, hasGitignore: boolean }> {
     const ig = ignore();
     const gitignorePath = path.join(workspaceRoot, '.gitignore');
+    let hasGitignore = false;
     
     try {
         if (fs.existsSync(gitignorePath)) {
             const gitignoreContent = fs.readFileSync(gitignorePath, 'utf8');
             ig.add(gitignoreContent);
+            hasGitignore = true;
         }
     } catch (error) {
         console.error('Error loading .gitignore:', error);
     }
     
-    return ig;
+    return { ig, hasGitignore };
 }
 
 
@@ -273,8 +275,12 @@ async function copyAllProjectFiles(context: vscode.ExtensionContext): Promise<vo
         const allowedExtensions = getAllowedExtensions(config);
         const filesToCopy: string[] = [];
 
+        // Track if any workspace folder has a .gitignore
+        let hasAnyGitignore = false;
+
         for (const folder of workspaceFolders) {
-            const ig = await loadGitignore(folder.uri.fsPath);
+            const { ig, hasGitignore } = await loadGitignore(folder.uri.fsPath);
+            hasAnyGitignore = hasAnyGitignore || hasGitignore;
             
             function searchFiles(dir: string, root: string): void {
                 const files = fs.readdirSync(dir);
@@ -283,13 +289,17 @@ async function copyAllProjectFiles(context: vscode.ExtensionContext): Promise<vo
                     const fullPath = path.join(dir, file);
                     const relativePath = path.relative(root, fullPath);
                     
-                    // Skip if file is ignored by .gitignore
-                    if (ig.ignores(relativePath)) {
+                    // Skip if file is ignored by .gitignore (when .gitignore exists)
+                    if (hasGitignore && ig.ignores(relativePath)) {
                         continue;
                     }
 
                     const stat = fs.statSync(fullPath);
                     if (stat.isDirectory()) {
+                        // Skip common version control and dependency directories
+                        if (file === 'node_modules' || file === '.git') {
+                            continue;
+                        }
                         searchFiles(fullPath, root);
                     } else if (stat.isFile()) {
                         const ext = path.extname(file);
@@ -304,10 +314,25 @@ async function copyAllProjectFiles(context: vscode.ExtensionContext): Promise<vo
             searchFiles(folder.uri.fsPath, folder.uri.fsPath);
         }
 
+        if (!hasAnyGitignore) {
+            // Show warning about missing .gitignore
+            const message = 'Warning: No .gitignore file found. All matching files will be included.';
+            const proceed = await vscode.window.showWarningMessage(message, 'Proceed', 'Cancel');
+            
+            if (proceed !== 'Proceed') {
+                return;
+            }
+        }
+
+        if (filesToCopy.length === 0) {
+            vscode.window.showInformationMessage('No matching files found to copy.');
+            return;
+        }
+
         await vscode.env.clipboard.writeText(filesToCopy.join('\n'));
-        vscode.window.showInformationMessage(`Copied ${filesToCopy.length} files`);
+        vscode.window.showInformationMessage(`Copied ${filesToCopy.length} files to clipboard`);
     } catch (error) {
-        vscode.window.showErrorMessage(`Error: ${error}`);
+        vscode.window.showErrorMessage(`Error: ${error instanceof Error ? error.message : String(error)}`);
     }
 }
 
