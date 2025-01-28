@@ -360,8 +360,7 @@ async function copyAllOpenFiles(context: vscode.ExtensionContext): Promise<void>
             // Only include visibly open documents
             return doc.isUntitled === false && 
                    doc.getText().trim().length > 0 &&
-                   !doc.isClosed &&
-                   vscode.window.visibleTextEditors.some(editor => editor.document === doc);
+                   !doc.isClosed
         });
 
         if (textDocuments.length === 0) {
