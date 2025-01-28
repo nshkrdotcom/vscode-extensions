@@ -122,9 +122,10 @@ class ConfigTreeDataProvider implements vscode.TreeDataProvider<ConfigTreeItem> 
     }
 
     async getChildren(element?: ConfigTreeItem): Promise<ConfigTreeItem[]> {
+        console.log('getChildren called with element:', element?.contextValue);
         const currentConfig = this.getConfig();
+        console.log('Current config:', currentConfig);
 
-        // Root level items
         if (!element) {
             return [
                 new ConfigTreeItem(
@@ -150,131 +151,95 @@ class ConfigTreeDataProvider implements vscode.TreeDataProvider<ConfigTreeItem> 
             ];
         }
 
-        // Handle each section's children
+        console.log('Processing children for:', element.contextValue);
+        
         switch (element.contextValue) {
             case 'copyActions':
-                return this.getCopyActionItems();
+                return [
+                    new ConfigTreeItem(
+                        'Copy All Open Files',
+                        vscode.TreeItemCollapsibleState.None,
+                        'copyCommand',
+                        {
+                            command: 'copy-code.copyAllFiles',
+                            title: 'Copy All Open Files'
+                        }
+                    ),
+                    new ConfigTreeItem(
+                        'Copy All Project Files',
+                        vscode.TreeItemCollapsibleState.None,
+                        'copyCommand',
+                        {
+                            command: 'copy-code.copyAllProjectFiles',
+                            title: 'Copy All Project Files'
+                        }
+                    )
+                ];
+
             case 'projectTypes':
-                return this.getProjectTypeItems(currentConfig);
-            case 'projectType':
-                return this.getProjectTypeBlacklistItems(element.type || '');
+                console.log('Project types config:', currentConfig.enabledProjectTypes);
+                return Object.keys(DEFAULT_EXTENSIONS).map(type => {
+                    const enabled = currentConfig.enabledProjectTypes.includes(type);
+                    return new ConfigTreeItem(
+                        `${enabled ? '✓' : '○'} ${type}`,
+                        vscode.TreeItemCollapsibleState.None,
+                        'projectType',
+                        {
+                            command: 'copy-code.toggleProjectType',
+                            title: 'Toggle Project Type',
+                            arguments: [type]
+                        }
+                    );
+                });
+
             case 'customExtensions':
-                return this.getCustomExtensionItems(currentConfig);
+                console.log('Custom extensions:', currentConfig.customExtensions);
+                const extItems = (currentConfig.customExtensions || []).map(ext => 
+                    new ConfigTreeItem(
+                        ext,
+                        vscode.TreeItemCollapsibleState.None,
+                        'customExtension'
+                    )
+                );
+                extItems.push(new ConfigTreeItem(
+                    '+ Add Custom Extension',
+                    vscode.TreeItemCollapsibleState.None,
+                    'addCustom',
+                    {
+                        command: 'copy-code.addCustomExtension',
+                        title: 'Add Custom Extension'
+                    }
+                ));
+                return extItems;
+
             case 'blacklist':
-                return this.getBlacklistItems(currentConfig);
+                console.log('Custom blacklist:', currentConfig.customBlacklist);
+                const blacklistItems = (currentConfig.customBlacklist || []).map(pattern => 
+                    new ConfigTreeItem(
+                        pattern,
+                        vscode.TreeItemCollapsibleState.None,
+                        'blacklistItem'
+                    )
+                );
+                blacklistItems.push(new ConfigTreeItem(
+                    '+ Add Blacklist Pattern',
+                    vscode.TreeItemCollapsibleState.None,
+                    'addBlacklist',
+                    {
+                        command: 'copy-code.addBlacklistPattern',
+                        title: 'Add Blacklist Pattern'
+                    }
+                ));
+                return blacklistItems;
+
             default:
                 return [];
         }
     }
 
-    private getCopyActionItems(): ConfigTreeItem[] {
-        return [
-            new ConfigTreeItem(
-                'Copy All Open Files',
-                vscode.TreeItemCollapsibleState.None,
-                'copyCommand',
-                {
-                    command: 'copy-code.copyAllFiles',
-                    title: 'Copy All Open Files'
-                }
-            ),
-            new ConfigTreeItem(
-                'Copy All Project Files',
-                vscode.TreeItemCollapsibleState.None,
-                'copyCommand',
-                {
-                    command: 'copy-code.copyAllProjectFiles',
-                    title: 'Copy All Project Files'
-                }
-            )
-        ];
-    }
-
-    private getProjectTypeItems(config: CopyCodeConfig): ConfigTreeItem[] {
-        return Object.keys(DEFAULT_EXTENSIONS).map(type => {
-            const enabled = config.enabledProjectTypes.includes(type);
-            const defaultBlacklist = DEFAULT_BLACKLIST[type] || [];
-            return new ConfigTreeItem(
-                `${enabled ? '✓' : '○'} ${type} (${defaultBlacklist.length} rules)`,
-                vscode.TreeItemCollapsibleState.Collapsed,
-                'projectType',
-                {
-                    command: 'copy-code.toggleProjectType',
-                    title: 'Toggle Project Type',
-                    arguments: [type]
-                },
-                type
-            );
-        });
-    }
-
-    private getProjectTypeBlacklistItems(type: string): ConfigTreeItem[] {
-        const blacklist = DEFAULT_BLACKLIST[type] || [];
-        return blacklist.map(pattern => 
-            new ConfigTreeItem(
-                `${pattern} (default)`,
-                vscode.TreeItemCollapsibleState.None,
-                'defaultBlacklistItem'
-            )
-        );
-    }
-
-    private getCustomExtensionItems(config: CopyCodeConfig): ConfigTreeItem[] {
-        const items = config.customExtensions.map(ext => 
-            new ConfigTreeItem(
-                ext,
-                vscode.TreeItemCollapsibleState.None,
-                'customExtension',
-                {
-                    command: 'copy-code.removeCustomExtension',
-                    title: 'Remove Extension',
-                    arguments: [ext]
-                }
-            )
-        );
-        
-        items.push(new ConfigTreeItem(
-            '+ Add Custom Extension',
-            vscode.TreeItemCollapsibleState.None,
-            'addCustom',
-            {
-                command: 'copy-code.addCustomExtension',
-                title: 'Add Custom Extension'
-            }
-        ));
-        
-        return items;
-    }
-
-    private getBlacklistItems(config: CopyCodeConfig): ConfigTreeItem[] {
-        const items = config.customBlacklist.map(pattern => 
-            new ConfigTreeItem(
-                pattern,
-                vscode.TreeItemCollapsibleState.None,
-                'blacklistItem',
-                {
-                    command: 'copy-code.removeBlacklistPattern',
-                    title: 'Remove from Blacklist',
-                    arguments: [pattern]
-                }
-            )
-        );
-        
-        items.push(new ConfigTreeItem(
-            '+ Add Blacklist Pattern',
-            vscode.TreeItemCollapsibleState.None,
-            'addBlacklist',
-            {
-                command: 'copy-code.addBlacklistPattern',
-                title: 'Add Blacklist Pattern'
-            }
-        ));
-        
-        return items;
-    }
-
     public getConfig(): CopyCodeConfig {
         const savedConfig = this.config.get<CopyCodeConfig>('copyCodeConfig');
+        console.log('Retrieved config:', savedConfig);
         return savedConfig || {
             enabledProjectTypes: ['powershell', 'python', 'node'],
             customExtensions: [],
@@ -395,13 +360,20 @@ async function copyAllOpenFiles(context: vscode.ExtensionContext): Promise<void>
 function getBlacklistedFiles(config: CopyCodeConfig): Set<string> {
     const blacklist = new Set<string>();
     
+    // Ensure config has required properties
+    const safeConfig = {
+        enabledProjectTypes: config?.enabledProjectTypes || [],
+        customBlacklist: config?.customBlacklist || [],
+        customExtensions: config?.customExtensions || []
+    };
+    
     // Add blacklisted files from enabled project types
-    config.enabledProjectTypes.forEach(type => {
+    safeConfig.enabledProjectTypes.forEach(type => {
         DEFAULT_BLACKLIST[type]?.forEach(file => blacklist.add(file));
     });
     
     // Add custom blacklisted files
-    config.customBlacklist.forEach(file => blacklist.add(file));
+    safeConfig.customBlacklist.forEach(file => blacklist.add(file));
     
     return blacklist;
 }
@@ -434,6 +406,11 @@ async function scanWorkspaceFiles(
     workspaceFolders: readonly vscode.WorkspaceFolder[],
     config: CopyCodeConfig
 ): Promise<FileScanResult> {
+    const safeConfig: CopyCodeConfig = {
+        enabledProjectTypes: config?.enabledProjectTypes || [],
+        customExtensions: config?.customExtensions || [],
+        customBlacklist: config?.customBlacklist || []
+    };    
     const allowedExtensions = getAllowedExtensions(config);
     const blacklist = getBlacklistedFiles(config);
     const filesToCopy: { path: string; content: string }[] = [];
@@ -486,29 +463,27 @@ async function scanWorkspaceFiles(
 // Main function with sequential warning handling
 async function copyAllProjectFiles(context: vscode.ExtensionContext): Promise<void> {
     try {
-        // Initial workspace check
         const workspaceFolders = vscode.workspace.workspaceFolders;
         if (!workspaceFolders?.length) {
             vscode.window.showInformationMessage('No workspace folder open');
             return;
         }
 
-        // Get configuration and scan files
         const config = getConfig(context);
-        const allowedExtensions = getAllowedExtensions(config);
         
-        // Scan workspace and get results
+        // Pass the entire config object
         const scanResult = await scanWorkspaceFiles(workspaceFolders, config);
         
-        // Handle no files found early
+        if (!scanResult?.files) {
+            vscode.window.showInformationMessage('No files found to copy');
+            return;
+        }
+
         if (scanResult.files.length === 0) {
             vscode.window.showInformationMessage('No matching files found to copy.');
             return;
         }
 
-        // Sequential warning handling
-        
-        // 1. First warning: Missing .gitignore
         if (!scanResult.hasGitignore) {
             const gitignoreWarning = await vscode.window.showWarningMessage(
                 'Warning: No .gitignore file found. All matching files will be included.',
@@ -521,8 +496,7 @@ async function copyAllProjectFiles(context: vscode.ExtensionContext): Promise<vo
             }
         }
 
-        // 2. Second warning: Too many files (if applicable)
-        const FILE_THRESHOLD = 50; // Adjust this number based on your needs
+        const FILE_THRESHOLD = 50;
         if (scanResult.files.length > FILE_THRESHOLD) {
             const manyFilesWarning = await vscode.window.showWarningMessage(
                 `Warning: You are about to copy ${scanResult.files.length} files. This is more than the recommended limit of ${FILE_THRESHOLD} files.`,
@@ -535,19 +509,17 @@ async function copyAllProjectFiles(context: vscode.ExtensionContext): Promise<vo
             }
         }
 
-        // If we get here, user has confirmed all warnings
-        // Prepare the final content
         const finalContent = scanResult.files
             .map(file => `=== ${file.path} ===\n${file.content}\n`)
             .join('\n');
 
-        // Copy to clipboard
         await vscode.env.clipboard.writeText(finalContent);
         vscode.window.showInformationMessage(
             `Successfully copied ${scanResult.files.length} files to clipboard`
         );
 
     } catch (error) {
+        console.error('Error in copyAllProjectFiles:', error);
         vscode.window.showErrorMessage(
             `Error: ${error instanceof Error ? error.message : String(error)}`
         );
@@ -638,76 +610,73 @@ export function deactivate(): void {
 }
 
 export function activate(context: vscode.ExtensionContext): void {
+    console.log('Activating extension');
+    
     const treeDataProvider = new ConfigTreeDataProvider(context.globalState);
-    vscode.window.registerTreeDataProvider('copy-code-actions', treeDataProvider);
+    const treeView = vscode.window.createTreeView('copy-code-actions', {
+        treeDataProvider: treeDataProvider,
+        showCollapseAll: true
+    });
+    
+    context.subscriptions.push(treeView);
 
-    // Register existing commands...
-
-    // Add new blacklist-related commands
+    // Register commands
     context.subscriptions.push(
-        vscode.commands.registerCommand('copy-code.addBlacklistPattern', async () => {
-            const pattern = await vscode.window.showInputBox({
-                prompt: 'Enter filename pattern to blacklist (e.g., "*.log" or "config.json")',
-                placeHolder: 'Filename or pattern',
+        vscode.commands.registerCommand('copy-code.copyAllFiles', () => {
+            copyAllOpenFiles(context);
+            treeDataProvider.refresh();
+        }),
+        
+        vscode.commands.registerCommand('copy-code.copyAllProjectFiles', () => {
+            copyAllProjectFiles(context);
+            treeDataProvider.refresh();
+        }),
+        
+        vscode.commands.registerCommand('copy-code.toggleProjectType', async (type: string) => {
+            console.log('Toggling project type:', type);
+            const currentConfig = treeDataProvider.getConfig();
+            const index = currentConfig.enabledProjectTypes.indexOf(type);
+            
+            if (index === -1) {
+                currentConfig.enabledProjectTypes.push(type);
+            } else {
+                currentConfig.enabledProjectTypes.splice(index, 1);
+            }
+            
+            await treeDataProvider.saveConfig(currentConfig);
+        }),
+        
+        vscode.commands.registerCommand('copy-code.addCustomExtension', async () => {
+            const extension = await vscode.window.showInputBox({
+                prompt: 'Enter file extension (e.g., .txt)',
                 validateInput: value => {
-                    if (!value) {
-                        return 'Pattern cannot be empty';
+                    if (!value?.startsWith('.')) {
+                        return 'Extension must start with a dot (.)';
                     }
                     return null;
                 }
             });
             
-            if (pattern) {
+            if (extension) {
                 const currentConfig = treeDataProvider.getConfig();
-                if (!currentConfig.customBlacklist.includes(pattern)) {
-                    currentConfig.customBlacklist.push(pattern);
-                    await treeDataProvider.saveConfig(currentConfig);
-                }
-            }
-        }),
-
-        vscode.commands.registerCommand('copy-code.removeBlacklistPattern', async (pattern: string) => {
-            const currentConfig = treeDataProvider.getConfig();
-            const index = currentConfig.customBlacklist.indexOf(pattern);
-            if (index !== -1) {
-                currentConfig.customBlacklist.splice(index, 1);
+                currentConfig.customExtensions.push(extension);
                 await treeDataProvider.saveConfig(currentConfig);
             }
         }),
 
-        // Add command to remove custom extensions
-        vscode.commands.registerCommand('copy-code.removeCustomExtension', async (extension: string) => {
-            const currentConfig = treeDataProvider.getConfig();
-            const index = currentConfig.customExtensions.indexOf(extension);
-            if (index !== -1) {
-                currentConfig.customExtensions.splice(index, 1);
-                await treeDataProvider.saveConfig(currentConfig);
-            }
-        })
-    );
-
-    // Register a new command to show blacklist summary
-    context.subscriptions.push(
-        vscode.commands.registerCommand('copy-code.showBlacklistSummary', async () => {
-            const currentConfig = treeDataProvider.getConfig();
-            let message = 'Current Blacklist Configuration:\n\n';
-            
-            // Show enabled project types and their default blacklist
-            message += 'Project-specific blacklist rules:\n';
-            currentConfig.enabledProjectTypes.forEach(type => {
-                const rules = DEFAULT_BLACKLIST[type] || [];
-                message += `${type}: ${rules.join(', ')}\n`;
+        vscode.commands.registerCommand('copy-code.addBlacklistPattern', async () => {
+            const pattern = await vscode.window.showInputBox({
+                prompt: 'Enter filename pattern to blacklist',
+                placeHolder: '*.log or config.json'
             });
             
-            // Show custom blacklist patterns
-            message += '\nCustom blacklist patterns:\n';
-            message += currentConfig.customBlacklist.length > 0 
-                ? currentConfig.customBlacklist.join(', ')
-                : 'None';
-            
-            await vscode.window.showInformationMessage(message, { modal: true });
+            if (pattern) {
+                const currentConfig = treeDataProvider.getConfig();
+                currentConfig.customBlacklist.push(pattern);
+                await treeDataProvider.saveConfig(currentConfig);
+            }
         })
     );
 
-    console.log('Congratulations, your extension "copy-code" is now active!');
+    console.log('Extension activated successfully');
 }
