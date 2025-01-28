@@ -1,0 +1,57 @@
+# Build output directories
+out/
+dist/
+
+# Dependency directories
+node_modules/
+
+# Package manager files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# VS Code Extension packaged files
+*.vsix
+
+# VS Code specific files
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# TypeScript cache and compilation info
+*.tsbuildinfo
+.tsc-cache/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Operating System files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Test coverage output
+coverage/
+.nyc_output/
+
+# Temporary files
+*.log
+*.tmp
+*~
+
+# IDE specific files
+.idea/
+*.swp
+*.swo
+.vs/
+
+# Keep these files (add ! to include)
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json

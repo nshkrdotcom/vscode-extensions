@@ -3,31 +3,6 @@ import * as fs from 'fs';
 import * as path from 'path';
 import ignore from 'ignore';
 
-interface CustomCopyCommand {
-    name: string;
-    script: string;
-    description?: string;
-}
-
-async function loadGitignore(workspaceRoot: string): Promise<{ ig: ReturnType<typeof ignore>, hasGitignore: boolean }> {
-    const ig = ignore();
-    const gitignorePath = path.join(workspaceRoot, '.gitignore');
-    let hasGitignore = false;
-    
-    try {
-        if (fs.existsSync(gitignorePath)) {
-            const gitignoreContent = fs.readFileSync(gitignorePath, 'utf8');
-            ig.add(gitignoreContent);
-            hasGitignore = true;
-        }
-    } catch (error) {
-        console.error('Error loading .gitignore:', error);
-    }
-    
-    return { ig, hasGitignore };
-}
-
-
 // Default file extension whitelist for different project types
 const DEFAULT_EXTENSIONS: { [key: string]: string[] } = {
     'powershell': ['.ps1', '.psm1', '.psd1'],
@@ -43,10 +18,60 @@ const DEFAULT_EXTENSIONS: { [key: string]: string[] } = {
     'wsl2': ['.sh', '.bash', '.zsh', '.ps1']
 };
 
+// Define default blacklisted files for each project type
+const DEFAULT_BLACKLIST: { [key: string]: string[] } = {
+    'node': [
+        'package-lock.json',
+        'yarn.lock',
+        'pnpm-lock.yaml',
+        '.npmrc',
+        '.yarnrc',
+        '.pnpmrc'
+    ],
+    'python': [
+        'Pipfile.lock',
+        'poetry.lock',
+        '__pycache__',
+        '*.pyc',
+        '.pytest_cache'
+    ],
+    'terraform': [
+        '.terraform.lock.hcl',
+        'terraform.tfstate',
+        'terraform.tfstate.backup'
+    ],
+    'vscode': [
+        '*.vsix',
+        '.vscodeignore'
+    ],
+    'powershell': [
+        '*.psd1',  // Module manifest files
+        '*.psm1'   // Module files
+    ]
+};
+
+// Update the CopyCodeConfig interface to include blacklist
 interface CopyCodeConfig {
     enabledProjectTypes: string[];
     customExtensions: string[];
+    customBlacklist: string[];  // New field for custom blacklisted files
 }
+
+
+interface CustomCopyCommand {
+    name: string;
+    script: string;
+    description?: string;
+}
+
+// The file scanning logic is separated to make the main function clearer
+interface FileScanResult {
+    files: { path: string; content: string }[];
+    hasGitignore: boolean;
+}
+
+
+
 
 class ConfigTreeItem extends vscode.TreeItem {
     constructor(
@@ -75,6 +100,21 @@ class ConfigTreeDataProvider implements vscode.TreeDataProvider<ConfigTreeItem> 
 
     getTreeItem(element: ConfigTreeItem): vscode.TreeItem {
         return element;
+    }
+
+    // Fix: Remove context parameter from getConfig
+    public getConfig(): CopyCodeConfig {
+        const savedConfig = this.config.get<CopyCodeConfig>('copyCodeConfig');
+        return savedConfig || {
+            enabledProjectTypes: ['powershell', 'python', 'node'],
+            customExtensions: [],
+            customBlacklist: []  // Include the new required property
+        };
+    }
+
+    public async saveConfig(newConfig: CopyCodeConfig): Promise<void> {
+        await this.config.update('copyCodeConfig', newConfig);
+        this.refresh();
     }
 
     getChildren(element?: ConfigTreeItem): Thenable<ConfigTreeItem[]> {
@@ -165,19 +205,6 @@ class ConfigTreeDataProvider implements vscode.TreeDataProvider<ConfigTreeItem> 
 
         return Promise.resolve([]);
     }
-    
-    public getConfig(): CopyCodeConfig {
-        const savedConfig = this.config.get<CopyCodeConfig>('copyCodeConfig');
-        return savedConfig || {
-            enabledProjectTypes: ['powershell', 'python', 'node'],
-            customExtensions: []
-        };
-    }
-
-    public async saveConfig(newConfig: CopyCodeConfig): Promise<void> {
-        await this.config.update('copyCodeConfig', newConfig);
-        this.refresh();
-    }
 }
 
 
@@ -191,6 +218,24 @@ class ConfigTreeDataProvider implements vscode.TreeDataProvider<ConfigTreeItem> 
 
 
 
+async function loadGitignore(workspaceRoot: string): Promise<{ ig: ReturnType<typeof ignore>, hasGitignore: boolean }> {
+    const ig = ignore();
+    const gitignorePath = path.join(workspaceRoot, '.gitignore');
+    let hasGitignore = false;
+    
+    try {
+        if (fs.existsSync(gitignorePath)) {
+            const gitignoreContent = fs.readFileSync(gitignorePath, 'utf8');
+            ig.add(gitignoreContent);
+            hasGitignore = true;
+        }
+    } catch (error) {
+        console.error('Error loading .gitignore:', error);
+    }
+    
+    return { ig, hasGitignore };
+}
+
 
 
 
@@ -201,7 +246,8 @@ function getConfig(context: vscode.ExtensionContext): CopyCodeConfig {
     const config = context.globalState.get<CopyCodeConfig>('copyCodeConfig');
     return config || {
         enabledProjectTypes: ['powershell', 'python', 'node'],
-        customExtensions: []
+        customExtensions: [],
+        customBlacklist: []  // Include the new required property
     };
 }
 
@@ -263,16 +309,52 @@ async function copyAllOpenFiles(context: vscode.ExtensionContext): Promise<void>
     }
 }
 
-// The file scanning logic is separated to make the main function clearer
-interface FileScanResult {
-    files: { path: string; content: string }[];
-    hasGitignore: boolean;
+
+// Function to get all blacklisted files based on config
+function getBlacklistedFiles(config: CopyCodeConfig): Set<string> {
+    const blacklist = new Set<string>();
+    
+    // Add blacklisted files from enabled project types
+    config.enabledProjectTypes.forEach(type => {
+        DEFAULT_BLACKLIST[type]?.forEach(file => blacklist.add(file));
+    });
+    
+    // Add custom blacklisted files
+    config.customBlacklist.forEach(file => blacklist.add(file));
+    
+    return blacklist;
+}
+
+// Update the file scanning function to use the blacklist
+function shouldIncludeFile(
+    filename: string,
+    allowedExtensions: Set<string>,
+    blacklist: Set<string>
+): boolean {
+    // Check if file is blacklisted (exact match or wildcard)
+    for (const pattern of blacklist) {
+        if (pattern.includes('*')) {
+            // Simple wildcard matching
+            const regex = new RegExp('^' + pattern.replace('*', '.*') + '$');
+            if (regex.test(filename)) {
+                return false;
+            }
+        } else if (filename === pattern) {
+            return false;
+        }
+    }
+    
+    // Check if extension is allowed
+    const ext = path.extname(filename);
+    return allowedExtensions.has(ext);
 }
 
 async function scanWorkspaceFiles(
     workspaceFolders: readonly vscode.WorkspaceFolder[],
-    allowedExtensions: Set<string>
+    config: CopyCodeConfig
 ): Promise<FileScanResult> {
+    const allowedExtensions = getAllowedExtensions(config);
+    const blacklist = getBlacklistedFiles(config);
     const filesToCopy: { path: string; content: string }[] = [];
     let hasAnyGitignore = false;
 
@@ -287,6 +369,7 @@ async function scanWorkspaceFiles(
                 const fullPath = path.join(dir, file);
                 const relativePath = path.relative(root, fullPath);
                 
+                // Skip if file is ignored by .gitignore
                 if (hasGitignore && ig.ignores(relativePath)) {
                     continue;
                 }
@@ -298,8 +381,8 @@ async function scanWorkspaceFiles(
                     }
                     searchFiles(fullPath, root);
                 } else if (stat.isFile()) {
-                    const ext = path.extname(file);
-                    if (allowedExtensions.has(ext)) {
+                    // Use new shouldIncludeFile function
+                    if (shouldIncludeFile(file, allowedExtensions, blacklist)) {
                         const content = fs.readFileSync(fullPath, 'utf8');
                         filesToCopy.push({
                             path: relativePath,
@@ -334,7 +417,7 @@ async function copyAllProjectFiles(context: vscode.ExtensionContext): Promise<vo
         const allowedExtensions = getAllowedExtensions(config);
         
         // Scan workspace and get results
-        const scanResult = await scanWorkspaceFiles(workspaceFolders, allowedExtensions);
+        const scanResult = await scanWorkspaceFiles(workspaceFolders, config);
         
         // Handle no files found early
         if (scanResult.files.length === 0) {
@@ -459,7 +542,8 @@ async function configureExtensions(context: vscode.ExtensionContext): Promise<vo
 
         const newConfig: CopyCodeConfig = {
             enabledProjectTypes: selectedTypes.map(pick => pick.label),
-            customExtensions: customExtInput ? customExtInput.split(',').map(ext => ext.trim()).filter(ext => ext) : []
+            customExtensions: customExtInput ? customExtInput.split(',').map(ext => ext.trim()).filter(ext => ext) : [],
+            customBlacklist: currentConfig.customBlacklist  // Preserve existing blacklist
         };
 
         await saveConfig(context, newConfig);
