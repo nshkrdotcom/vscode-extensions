@@ -1,4 +1,4 @@
-# Copy Code: Effortless Code Sharing Across Your Projects 🚀
+# Copy Coder: Effortless Code Sharing Across Your Projects 🚀
 
 ## Overview
 
