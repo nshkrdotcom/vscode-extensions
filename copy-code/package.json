@@ -2,7 +2,7 @@
     "name":  "copy-code",
     "displayName":  "Copy Code",
     "description":  "Copy content from all open files or project files with configurable extensions.",
-    "version":  "0.1.35",
+    "version":  "0.1.36",
     "publisher":  "nshkrdotcom",
     "repository":  {
                        "type":  "git",
@@ -36,7 +36,7 @@
                                              "command":  "copy-code.copyAllProjectFiles",
                                              "title":  "Copy All Project Files",
                                              "category":  "Copy Code",
-                                             "icon":  "$(gear)"
+                                             "icon":  "$(copy)"
                                          },
                                          {
                                              "command":  "copy-code.configureExtensions",
@@ -65,7 +65,7 @@
                                                                     {
                                                                         "id":  "copy-code-view-container",
                                                                         "title":  "Copy Code Actions",
-                                                                        "icon":  "$(files)"
+                                                                        "icon":  "$(copy)"
                                                                     }
                                                                 ]
                                             },
