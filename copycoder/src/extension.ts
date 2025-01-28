@@ -356,31 +356,72 @@ function getAllowedExtensions(config: CopyCodeConfig): Set<string> {
 // Function to copy content from all open files
 async function copyAllOpenFiles(context: vscode.ExtensionContext): Promise<void> {
     try {
+        // Get ALL open text documents, including those not currently visible
         const textDocuments = vscode.workspace.textDocuments.filter(doc => {
-            // Tighten the filter to ensure only current, visible, non-empty files
-            return !doc.isUntitled && 
-                   doc.uri.scheme === 'file' &&  // Ensure it's a file on disk
-                   doc.getText().trim().length > 0 &&
-                   vscode.window.visibleTextEditors.some(
-                       editor => editor.document.uri.toString() === doc.uri.toString()
-                   );
+            // More comprehensive checks to ensure file validity
+            return (
+                !doc.isUntitled &&               // Not an unsaved/temporary document
+                doc.uri.scheme === 'file' &&     // Must be a file on disk
+                doc.getText().trim().length > 0  // Has some content
+            );
         });
 
         if (textDocuments.length === 0) {
-            vscode.window.showInformationMessage('No open files found.');
+            vscode.window.showInformationMessage('No files are currently open.');
             return;
         }
         
-        const contents = textDocuments.map(doc => {
+        // Advanced file content collection with more context
+        const fileContents = textDocuments.map(doc => {
             const relativePath = vscode.workspace.asRelativePath(doc.fileName);
-            return `=== ${relativePath} ===\n${doc.getText()}\n`;
-        }).join('\n');
+            const fileContent = doc.getText();
+            
+            // Helpful logging for debugging
+            console.log(`Preparing file: ${relativePath}, Length: ${fileContent.length}`);
+            
+            return {
+                path: relativePath,
+                content: fileContent,
+                uri: doc.uri
+            };
+        });
 
-        await vscode.env.clipboard.writeText(contents);
-        vscode.window.showInformationMessage(`Copied content from ${textDocuments.length} open files to clipboard.`);
+        // Sort files by path to ensure consistent ordering
+        const sortedFileContents = fileContents.sort((a, b) => 
+            a.path.localeCompare(b.path)
+        );
+
+        // Comprehensive clipboard content with more structured formatting
+        const finalContent = sortedFileContents.map(file => 
+            `=== FILE: ${file.path} ===\n${file.content}\n`
+        ).join('\n\n---FILE SEPARATOR---\n\n');
+
+        // Use clipboard API with error handling
+        try {
+            await vscode.env.clipboard.writeText(finalContent);
+            
+            // Provide detailed feedback
+            vscode.window.showInformationMessage(
+                `Successfully copied ${sortedFileContents.length} file(s) to clipboard.`,
+                {
+                    detail: `Files include: ${sortedFileContents.map(f => f.path).join(', ')}`
+                }
+            );
+        } catch (clipboardError) {
+            console.error('Clipboard write error:', clipboardError);
+            vscode.window.showErrorMessage(
+                `Failed to write to clipboard: ${clipboardError instanceof Error ? clipboardError.message : 'Unknown error'}`
+            );
+        }
+
     } catch (error) {
-        console.error('Error in copyAllOpenFiles:', error);
-        vscode.window.showErrorMessage(`Failed to copy content from open files: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        console.error('Comprehensive error in copyAllOpenFiles:', error);
+        
+        // Detailed error reporting
+        vscode.window.showErrorMessage(
+            `Failed to copy open files: ${error instanceof Error ? error.message : 'Unexpected error occurred'}`,
+            'Show Details'
+        );
     }
 }
 
