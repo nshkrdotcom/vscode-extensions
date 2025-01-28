@@ -2,7 +2,7 @@
     "name":  "copy-code",
     "displayName":  "Copy Code",
     "description":  "Copy content from all open files or project files with configurable extensions.",
-    "version":  "0.1.16",
+    "version":  "0.1.17",
     "publisher":  "nshkrdotcom",
     "repository":  {
                        "type":  "git",
@@ -29,19 +29,38 @@
                                              "command":  "copy-code.copyAllFiles",
                                              "title":  "Copy All Open Files",
                                              "category":  "Copy Code",
-                                             "icon":  "$(files)"
+                                             "icon":  {
+                                                          "light":  "resources/light/files.svg",
+                                                          "dark":  "resources/dark/files.svg"
+                                                      }
                                          },
                                          {
                                              "command":  "copy-code.copyAllProjectFiles",
                                              "title":  "Copy All Project Files",
                                              "category":  "Copy Code",
-                                             "icon":  "$(folder)"
+                                             "icon":  {
+                                                          "light":  "resources/light/folder.svg",
+                                                          "dark":  "resources/dark/folder.svg"
+                                                      }
                                          },
                                          {
                                              "command":  "copy-code.configureExtensions",
                                              "title":  "Configure Extensions",
                                              "category":  "Copy Code",
-                                             "icon":  "$(settings-gear)"
+                                             "icon":  {
+                                                          "light":  "resources/light/settings.svg",
+                                                          "dark":  "resources/dark/settings.svg"
+                                                      }
+                                         },
+                                         {
+                                             "command":  "copy-code.toggleProjectType",
+                                             "title":  "Toggle Project Type",
+                                             "category":  "Copy Code"
+                                         },
+                                         {
+                                             "command":  "copy-code.addCustomExtension",
+                                             "title":  "Add Custom Extension",
+                                             "category":  "Copy Code"
                                          }
                                      ],
                         "viewsContainers":  {

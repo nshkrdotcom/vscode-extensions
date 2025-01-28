@@ -53,22 +53,48 @@ class ConfigTreeDataProvider implements vscode.TreeDataProvider<ConfigTreeItem> 
 
     getChildren(element?: ConfigTreeItem): Thenable<ConfigTreeItem[]> {
         if (!element) {
-            const currentConfig = this.getConfig();
-            const items: ConfigTreeItem[] = [];
-
-            items.push(new ConfigTreeItem(
-                'Enabled Project Types',
-                vscode.TreeItemCollapsibleState.Expanded,
-                'projectTypes'
-            ));
-
-            items.push(new ConfigTreeItem(
-                'Custom Extensions',
-                vscode.TreeItemCollapsibleState.Expanded,
-                'customExtensions'
-            ));
-
-            return Promise.resolve(items);
+            return Promise.resolve([
+                // Copy buttons section
+                new ConfigTreeItem(
+                    'Copy Actions',
+                    vscode.TreeItemCollapsibleState.Expanded,
+                    'copyActions'
+                ),
+                // Filter sections
+                new ConfigTreeItem(
+                    'Enabled Project Types',
+                    vscode.TreeItemCollapsibleState.Expanded,
+                    'projectTypes'
+                ),
+                new ConfigTreeItem(
+                    'Custom Extensions',
+                    vscode.TreeItemCollapsibleState.Expanded,
+                    'customExtensions'
+                )
+            ]);
+        }
+    
+        if (element.contextValue === 'copyActions') {
+            return Promise.resolve([
+                new ConfigTreeItem(
+                    'Copy All Open Files',
+                    vscode.TreeItemCollapsibleState.None,
+                    'copyCommand',
+                    {
+                        command: 'copy-code.copyAllFiles',
+                        title: 'Copy All Open Files'
+                    }
+                ),
+                new ConfigTreeItem(
+                    'Copy All Project Files',
+                    vscode.TreeItemCollapsibleState.None,
+                    'copyCommand',
+                    {
+                        command: 'copy-code.copyAllProjectFiles',
+                        title: 'Copy All Project Files'
+                    }
+                )
+            ]);
         }
 
         const currentConfig = this.getConfig();
