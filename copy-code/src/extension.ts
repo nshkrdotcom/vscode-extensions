@@ -1,6 +1,30 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
+import ignore from 'ignore';
+
+interface CustomCopyCommand {
+    name: string;
+    script: string;
+    description?: string;
+}
+
+async function loadGitignore(workspaceRoot: string): Promise<ReturnType<typeof ignore>> {
+    const ig = ignore();
+    const gitignorePath = path.join(workspaceRoot, '.gitignore');
+    
+    try {
+        if (fs.existsSync(gitignorePath)) {
+            const gitignoreContent = fs.readFileSync(gitignorePath, 'utf8');
+            ig.add(gitignoreContent);
+        }
+    } catch (error) {
+        console.error('Error loading .gitignore:', error);
+    }
+    
+    return ig;
+}
+
 
 // Default file extension whitelist for different project types
 const DEFAULT_EXTENSIONS: { [key: string]: string[] } = {
@@ -237,61 +261,101 @@ async function copyAllOpenFiles(context: vscode.ExtensionContext): Promise<void>
     }
 }
 
-// Function to copy content from project files based on configuration
 async function copyAllProjectFiles(context: vscode.ExtensionContext): Promise<void> {
     try {
         const workspaceFolders = vscode.workspace.workspaceFolders;
-        if (!workspaceFolders || workspaceFolders.length === 0) {
-            vscode.window.showInformationMessage('No workspace folder open.');
+        if (!workspaceFolders?.length) {
+            vscode.window.showInformationMessage('No workspace folder open');
             return;
         }
 
         const config = getConfig(context);
         const allowedExtensions = getAllowedExtensions(config);
-
         const filesToCopy: string[] = [];
 
-        // Recursive function to search for files in a directory
-        function searchFiles(dir: string, root: string): void {
-            const files = fs.readdirSync(dir);
+        for (const folder of workspaceFolders) {
+            const ig = await loadGitignore(folder.uri.fsPath);
+            
+            function searchFiles(dir: string, root: string): void {
+                const files = fs.readdirSync(dir);
+                
+                for (const file of files) {
+                    const fullPath = path.join(dir, file);
+                    const relativePath = path.relative(root, fullPath);
+                    
+                    // Skip if file is ignored by .gitignore
+                    if (ig.ignores(relativePath)) {
+                        continue;
+                    }
 
-            files.forEach(file => {
-                const fullPath = path.join(dir, file);
-                const stat = fs.statSync(fullPath);
-
-                if (stat.isDirectory() && file !== '.git') {
-                    searchFiles(fullPath, root);
-                } else if (stat.isFile()) {
-                    const ext = path.extname(file);
-                    if (allowedExtensions.has(ext)) {
-                        try {
+                    const stat = fs.statSync(fullPath);
+                    if (stat.isDirectory()) {
+                        searchFiles(fullPath, root);
+                    } else if (stat.isFile()) {
+                        const ext = path.extname(file);
+                        if (allowedExtensions.has(ext)) {
                             const content = fs.readFileSync(fullPath, 'utf8');
-                            filesToCopy.push(`=== ${path.relative(root, fullPath)} ===\n${content}\n`);
-                        } catch (readError) {
-                            console.error(`Error reading file ${fullPath}:`, readError);
+                            filesToCopy.push(`=== ${relativePath} ===\n${content}\n`);
                         }
                     }
                 }
-            });
-        }
+            }
 
-        // Iterate through each workspace folder (for multi-root workspaces)
-        for (const folder of workspaceFolders) {
             searchFiles(folder.uri.fsPath, folder.uri.fsPath);
         }
 
-        if (filesToCopy.length === 0) {
-            vscode.window.showInformationMessage('No project files found matching the configured extensions.');
-            return;
-        }
-
-        const contents = filesToCopy.join('\n');
-        await vscode.env.clipboard.writeText(contents);
-        vscode.window.showInformationMessage(`Copied content from ${filesToCopy.length} project files to clipboard.`);
+        await vscode.env.clipboard.writeText(filesToCopy.join('\n'));
+        vscode.window.showInformationMessage(`Copied ${filesToCopy.length} files`);
     } catch (error) {
-        vscode.window.showErrorMessage(`Failed to copy content from project files: ${error instanceof Error ? error.message : 'Unknown error'}`);
-        console.error('Error in copyAllProjectFiles:', error);
+        vscode.window.showErrorMessage(`Error: ${error}`);
     }
+}
+
+export function registerCustomCopyCommand(context: vscode.ExtensionContext, command: CustomCopyCommand): void {
+    context.subscriptions.push(
+        vscode.commands.registerCommand(`copy-code.custom.${command.name}`, async () => {
+            try {
+                const workspaceFolder = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
+                const resolvedScript = command.script.replace('${workspaceFolder}', workspaceFolder || '');
+                
+                const process = require('child_process');
+                process.exec(`powershell.exe -File "${resolvedScript}"`, (error: any, stdout: string) => {
+                    if (error) {
+                        vscode.window.showErrorMessage(`Script error: ${error}`);
+                        return;
+                    }
+                    vscode.window.showInformationMessage(`Command "${command.name}" executed successfully`);
+                });
+            } catch (error) {
+                vscode.window.showErrorMessage(`Error: ${error}`);
+            }
+        })
+    );
+}
+
+export async function addCustomCopyCommand(context: vscode.ExtensionContext): Promise<void> {
+    const name = await vscode.window.showInputBox({
+        prompt: 'Enter command name'
+    });
+    
+    if (!name) return;
+
+    const script = await vscode.window.showInputBox({
+        prompt: 'Enter PowerShell script path',
+        placeHolder: 'e.g., ${workspaceFolder}/scripts/copy.ps1'
+    });
+    
+    if (!script) return;
+
+    const description = await vscode.window.showInputBox({
+        prompt: 'Enter command description (optional)'
+    });
+
+    const customCommands = context.globalState.get<CustomCopyCommand[]>('customCopyCommands', []);
+    customCommands.push({ name, script, description });
+    await context.globalState.update('customCopyCommands', customCommands);
+
+    registerCustomCopyCommand(context, { name, script, description });
 }
 
 // Function to configure the extension's settings
