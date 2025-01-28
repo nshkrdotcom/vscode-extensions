@@ -1,5 +1,5 @@
 {
-    "name":  "copy-code",
+    "name":  "copycoder",
     "displayName":  "Copy Code",
     "description":  "Copy content from all open files or project files with configurable extensions.",
     "version":  "0.1.38",
@@ -7,7 +7,7 @@
     "repository":  {
                        "type":  "git",
                        "url":  "https://github.com/nshkrdotcom/vscode-extensions.git",
-                       "directory":  "copy-code"
+                       "directory":  "copycoder"
                    },
     "engines":  {
                     "vscode":  "^1.85.0"
@@ -17,47 +17,47 @@
                    ],
     "activationEvents":  [
                              "onStartupFinished",
-                             "onCommand:copy-code.copyAllFiles",
-                             "onCommand:copy-code.copyAllProjectFiles",
-                             "onCommand:copy-code.configureExtensions",
-                             "onCommand:copy-code.addCustomCommand"
+                             "onCommand:copycoder.copyAllFiles",
+                             "onCommand:copycoder.copyAllProjectFiles",
+                             "onCommand:copycoder.configureExtensions",
+                             "onCommand:copycoder.addCustomCommand"
                          ],
     "main":  "./out/extension.js",
     "icon":  "resources/icon.png",
     "contributes":  {
                         "commands":  [
                                          {
-                                             "command":  "copy-code.copyAllFiles",
+                                             "command":  "copycoder.copyAllFiles",
                                              "title":  "Copy All Open Files",
                                              "category":  "Copy Code",
                                              "icon":  "$(files)"
                                          },
                                          {
-                                             "command":  "copy-code.copyAllProjectFiles",
+                                             "command":  "copycoder.copyAllProjectFiles",
                                              "title":  "Copy All Project Files",
                                              "category":  "Copy Code",
                                              "icon":  "$(copy)"
                                          },
                                          {
-                                             "command":  "copy-code.configureExtensions",
+                                             "command":  "copycoder.configureExtensions",
                                              "title":  "Configure Extensions",
                                              "category":  "Copy Code",
                                              "icon":  "$(folder)"
                                          },
                                          {
-                                             "command":  "copy-code.toggleProjectType",
+                                             "command":  "copycoder.toggleProjectType",
                                              "title":  "Toggle Project Type",
                                              "category":  "Copy Code",
                                              "icon":  "$(files-alt)"
                                          },
                                          {
-                                             "command":  "copy-code.addCustomExtension",
+                                             "command":  "copycoder.addCustomExtension",
                                              "title":  "Add Custom Extension",
                                              "category":  "Copy Code",
                                              "icon":  "$(export)"
                                          },
                                          {
-                                             "command":  "copy-code.addCustomCommand",
+                                             "command":  "copycoder.addCustomCommand",
                                              "title":  "Add Custom Copy Command",
                                              "category":  "Copy Code",
                                              "icon":  "$(export)"
@@ -66,16 +66,16 @@
                         "viewsContainers":  {
                                                 "activitybar":  [
                                                                     {
-                                                                        "id":  "copy-code-view-container",
+                                                                        "id":  "copycoder-view-container",
                                                                         "title":  "Copy Code Actions",
                                                                         "icon":  "$(copy)"
                                                                     }
                                                                 ]
                                             },
                         "views":  {
-                                      "copy-code-view-container":  [
+                                      "copycoder-view-container":  [
                                                                        {
-                                                                           "id":  "copy-code-actions",
+                                                                           "id":  "copycoder-actions",
                                                                            "name":  "Actions"
                                                                        }
                                                                    ]
@@ -83,8 +83,8 @@
                         "menus":  {
                                       "view/title":  [
                                                          {
-                                                             "command":  "copy-code.copyAllFiles",
-                                                             "when":  "view == copy-code-actions",
+                                                             "command":  "copycoder.copyAllFiles",
+                                                             "when":  "view == copycoder-actions",
                                                              "group":  "navigation",
                                                              "icon":  "resources/icon.png"
                                                          }
@@ -92,19 +92,19 @@
                                       "editor/title":  [
                                                            {
                                                                "when":  "resourceScheme == \u0027file\u0027",
-                                                               "command":  "copy-code.copyAllFiles",
+                                                               "command":  "copycoder.copyAllFiles",
                                                                "group":  "navigation@10"
                                                            },
                                                            {
                                                                "when":  "resourceScheme == \u0027file\u0027",
-                                                               "command":  "copy-code.copyAllProjectFiles",
+                                                               "command":  "copycoder.copyAllProjectFiles",
                                                                "group":  "navigation@11"
                                                            }
                                                        ],
                                       "explorer/context":  [
                                                                {
                                                                    "when":  "isFolder",
-                                                                   "command":  "copy-code.copyAllProjectFiles",
+                                                                   "command":  "copycoder.copyAllProjectFiles",
                                                                    "group":  "2_workspace@10"
                                                                }
                                                            ]

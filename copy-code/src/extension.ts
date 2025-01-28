@@ -171,7 +171,7 @@ class ConfigTreeDataProvider implements vscode.TreeDataProvider<ConfigTreeItem> 
                     vscode.TreeItemCollapsibleState.None,
                     'addBlacklist',
                     {
-                        command: 'copy-code.addBlacklistPattern',
+                        command: 'copycoder.addBlacklistPattern',
                         title: 'Add Pattern'
                     }
                 ));
@@ -185,7 +185,7 @@ class ConfigTreeDataProvider implements vscode.TreeDataProvider<ConfigTreeItem> 
                         vscode.TreeItemCollapsibleState.None,
                         'copyCommand',
                         {
-                            command: 'copy-code.copyAllFiles',
+                            command: 'copycoder.copyAllFiles',
                             title: 'Copy All Open Files'
                         }
                     ),
@@ -194,7 +194,7 @@ class ConfigTreeDataProvider implements vscode.TreeDataProvider<ConfigTreeItem> 
                         vscode.TreeItemCollapsibleState.None,
                         'copyCommand',
                         {
-                            command: 'copy-code.copyAllProjectFiles',
+                            command: 'copycoder.copyAllProjectFiles',
                             title: 'Copy All Project Files'
                         }
                     )
@@ -214,7 +214,7 @@ class ConfigTreeDataProvider implements vscode.TreeDataProvider<ConfigTreeItem> 
                     vscode.TreeItemCollapsibleState.None,
                     'addCustom',
                     {
-                        command: 'copy-code.addCustomExtension',
+                        command: 'copycoder.addCustomExtension',
                         title: 'Add Custom Extension'
                     }
                 ));
@@ -245,7 +245,7 @@ class ConfigTreeDataProvider implements vscode.TreeDataProvider<ConfigTreeItem> 
                 defaultBlacklist.length > 0 ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None,
                 'projectType',
                 {
-                    command: 'copy-code.toggleProjectType',
+                    command: 'copycoder.toggleProjectType',
                     title: 'Toggle Project Type',
                     arguments: [type]
                 },
@@ -260,7 +260,7 @@ class ConfigTreeDataProvider implements vscode.TreeDataProvider<ConfigTreeItem> 
         
         // For custom blacklist items, we want to allow removal
         const command = !isDefault ? {
-            command: 'copy-code.removeBlacklistPattern',
+            command: 'copycoder.removeBlacklistPattern',
             title: 'Remove Pattern',
             arguments: [pattern]
         } : undefined;
@@ -553,7 +553,7 @@ async function copyAllProjectFiles(context: vscode.ExtensionContext): Promise<vo
 
 export function registerCustomCopyCommand(context: vscode.ExtensionContext, command: CustomCopyCommand): void {
     context.subscriptions.push(
-        vscode.commands.registerCommand(`copy-code.custom.${command.name}`, async () => {
+        vscode.commands.registerCommand(`copycoder.custom.${command.name}`, async () => {
             try {
                 const workspaceFolder = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
                 const resolvedScript = command.script.replace('${workspaceFolder}', workspaceFolder || '');
@@ -638,7 +638,7 @@ export function activate(context: vscode.ExtensionContext): void {
     console.log('Activating extension');
     
     const treeDataProvider = new ConfigTreeDataProvider(context.globalState);
-    const treeView = vscode.window.createTreeView('copy-code-actions', {
+    const treeView = vscode.window.createTreeView('copycoder-actions', {
         treeDataProvider: treeDataProvider,
         showCollapseAll: true
     });
@@ -647,17 +647,17 @@ export function activate(context: vscode.ExtensionContext): void {
 
     // Register commands
     context.subscriptions.push(
-        vscode.commands.registerCommand('copy-code.copyAllFiles', () => {
+        vscode.commands.registerCommand('copycoder.copyAllFiles', () => {
             copyAllOpenFiles(context);
             treeDataProvider.refresh();
         }),
         
-        vscode.commands.registerCommand('copy-code.copyAllProjectFiles', () => {
+        vscode.commands.registerCommand('copycoder.copyAllProjectFiles', () => {
             copyAllProjectFiles(context);
             treeDataProvider.refresh();
         }),
         
-        vscode.commands.registerCommand('copy-code.toggleProjectType', async (type: string) => {
+        vscode.commands.registerCommand('copycoder.toggleProjectType', async (type: string) => {
             console.log('Toggling project type:', type);
             const currentConfig = treeDataProvider.getConfig();
             const index = currentConfig.enabledProjectTypes.indexOf(type);
@@ -671,7 +671,7 @@ export function activate(context: vscode.ExtensionContext): void {
             await treeDataProvider.saveConfig(currentConfig);
         }),
         
-        vscode.commands.registerCommand('copy-code.addCustomExtension', async () => {
+        vscode.commands.registerCommand('copycoder.addCustomExtension', async () => {
             const extension = await vscode.window.showInputBox({
                 prompt: 'Enter file extension (e.g., .txt)',
                 validateInput: value => {
@@ -689,7 +689,7 @@ export function activate(context: vscode.ExtensionContext): void {
             }
         }),
 
-        vscode.commands.registerCommand('copy-code.addBlacklistPattern', async () => {
+        vscode.commands.registerCommand('copycoder.addBlacklistPattern', async () => {
             const pattern = await vscode.window.showInputBox({
                 prompt: 'Enter filename pattern to blacklist',
                 placeHolder: '*.log or config.json'
