@@ -13,7 +13,7 @@ export class CodeBlockParser {
     public static parseContent(content: string): ParsedCodeBlock[] {
         const blocks: ParsedCodeBlock[] = [];
         const lines = content.split('\n');
-        
+        console.log("lines: ", lines);
         let currentPath = '';
         let currentCode = '';
         let inCodeBlock = false;

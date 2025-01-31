@@ -2,7 +2,7 @@
     "name":  "copycoder",
     "displayName":  "Copy Coder",
     "description":  "Copy content from all open files or project files with configurable extensions.",
-    "version":  "0.1.50",
+    "version":  "0.1.52",
     "publisher":  "nshkrdotcom",
     "repository":  {
                        "type":  "git",
@@ -63,11 +63,11 @@
                                              "icon":  "$(export)"
                                          },
                                          {
-                                            "command": "copycoder.parseClipboard",
-                                            "title": "Parse Code Blocks from Clipboard",
-                                            "category": "Copy Code",
-                                            "icon": "$(clippy)"
-                                        }
+                                             "command":  "copycoder.parseClipboard",
+                                             "title":  "Parse Code Blocks from Clipboard",
+                                             "category":  "Copy Code",
+                                             "icon":  "$(clippy)"
+                                         }
                                      ],
                         "viewsContainers":  {
                                                 "activitybar":  [
@@ -95,10 +95,10 @@
                                                              "icon":  "$(files-alt)"
                                                          },
                                                          {
-                                                            "command": "copycoder.parseClipboard",
-                                                            "when": "view == copycoder-actions",
-                                                            "group": "navigation@12"
-                                                        }
+                                                             "command":  "copycoder.parseClipboard",
+                                                             "when":  "view == copycoder-actions",
+                                                             "group":  "navigation@12"
+                                                         }
                                                      ],
                                       "editor/title":  [
                                                            {

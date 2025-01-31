@@ -36,6 +36,9 @@ $wslPath = "/mnt/$driveLetter" + ($windowsPath.Substring(2) -replace '\\', '/')
 
 Write-Output "Installing extension in WSL from location: $wslPath/$($vsixFile.Name)"
 wsl -d udev2404 code --install-extension "$wslPath/$($vsixFile.Name)"
+wsl -d udev code --install-extension "$wslPath/$($vsixFile.Name)"
+wsl -d Ubuntu code --install-extension "$wslPath/$($vsixFile.Name)"
+wsl code --install-extension "$wslPath/$($vsixFile.Name)"
 
 git add ../.
 git commit -m "Version: ($vsixFile.Name)"
