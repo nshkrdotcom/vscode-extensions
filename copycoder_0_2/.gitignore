@@ -21,6 +21,8 @@ dist/
 !.vscode/tasks.json
 !.vscode/extensions.json
 
+.vscode-test/*
+
 # OS and editor files
 .DS_Store
 *.swp

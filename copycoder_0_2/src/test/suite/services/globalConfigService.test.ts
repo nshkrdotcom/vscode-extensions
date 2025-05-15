@@ -5,6 +5,7 @@ import * as os from 'os';
 import * as path from 'path';
 import { GlobalConfigService } from '../../../services/globalConfigService';
 import { FileSystem } from '../../../services/fileSystem';
+import { DEFAULT_EXTENSIONS, DEFAULT_BLACKLIST } from '../../../models/projectTypes';
 
 suite('GlobalConfigService Tests', () => {
   let sandbox: sinon.SinonSandbox;
@@ -15,8 +16,15 @@ suite('GlobalConfigService Tests', () => {
   const defaultConfig = {
     includeGlobalExtensions: true,
     applyGlobalBlacklist: true,
-    extensions: ['.js', '.ts', '.md'],
-    blacklist: ['node_modules', 'dist'],
+    filterUsingGitignore: true, // New field
+    projectExtensions: Object.fromEntries(
+      Object.entries(DEFAULT_EXTENSIONS).filter(([key]) => key !== 'global')
+    ),
+    globalExtensions: DEFAULT_EXTENSIONS.global || [],
+    projectBlacklist: Object.fromEntries(
+      Object.entries(DEFAULT_BLACKLIST).filter(([key]) => key !== 'global')
+    ),
+    globalBlacklist: DEFAULT_BLACKLIST.global || [],
   };
 
   setup(() => {
@@ -64,21 +72,37 @@ suite('GlobalConfigService Tests', () => {
   test('should merge saved config with default config', () => {
     const savedConfig = {
       includeGlobalExtensions: false,
-      extensions: ['.py'],
+      filterUsingGitignore: false, // New field
+      projectExtensions: {
+        python: ['.py'],
+        node: ['.js'],
+      },
+      globalExtensions: ['.md'],
+      projectBlacklist: {
+        node: ['node_modules'],
+      },
+      globalBlacklist: ['.git'],
     };
     (mockFs.existsSync as sinon.SinonStub).returns(true);
     (mockFs.readFileSync as sinon.SinonStub).returns(JSON.stringify(savedConfig));
     const config = configService.getConfig();
-    assert.deepStrictEqual(
-      config,
-      {
-        includeGlobalExtensions: false,
-        applyGlobalBlacklist: true,
-        extensions: ['.py'],
-        blacklist: ['node_modules', 'dist'],
+    const expectedConfig = {
+      includeGlobalExtensions: false,
+      applyGlobalBlacklist: true,
+      filterUsingGitignore: false, // New field
+      projectExtensions: {
+        ...defaultConfig.projectExtensions,
+        python: ['.py'],
+        node: ['.js'],
       },
-      'Should merge saved config with defaults'
-    );
+      globalExtensions: ['.md'],
+      projectBlacklist: {
+        ...defaultConfig.projectBlacklist,
+        node: ['node_modules'],
+      },
+      globalBlacklist: ['.git'],
+    };
+    assert.deepStrictEqual(config, expectedConfig, 'Should merge saved config with defaults');
   });
 
   test('should save config to file', () => {
@@ -87,8 +111,15 @@ suite('GlobalConfigService Tests', () => {
     const newConfig = {
       includeGlobalExtensions: false,
       applyGlobalBlacklist: false,
-      extensions: ['.js'],
-      blacklist: ['temp'],
+      filterUsingGitignore: false, // New field
+      projectExtensions: {
+        python: ['.py'],
+      },
+      globalExtensions: ['.txt'],
+      projectBlacklist: {
+        python: ['__pycache__'],
+      },
+      globalBlacklist: ['temp'],
     };
     configService.saveConfig(newConfig);
     assert.strictEqual(
@@ -103,14 +134,14 @@ suite('GlobalConfigService Tests', () => {
   });
 
   test('should handle file read errors gracefully', () => {
-      sandbox.stub(console, 'error'); // Suppress console.error output
-      (mockFs.existsSync as sinon.SinonStub).returns(true);
-      (mockFs.readFileSync as sinon.SinonStub).throws(new Error('Read error'));
-      const config = configService.getConfig();
-      assert.deepStrictEqual(
-          config,
-          defaultConfig,
-          'Should return default config on read error'
-      );
+    sandbox.stub(console, 'error'); // Suppress console.error output
+    (mockFs.existsSync as sinon.SinonStub).returns(true);
+    (mockFs.readFileSync as sinon.SinonStub).throws(new Error('Read error'));
+    const config = configService.getConfig();
+    assert.deepStrictEqual(
+      config,
+      defaultConfig,
+      'Should return default config on read error'
+    );
   });
 });

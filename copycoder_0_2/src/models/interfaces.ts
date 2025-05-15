@@ -31,10 +31,12 @@ export interface ParsedCodeBlock {
 }
 
 
-
 export interface Config {
-    includeGlobalExtensions: boolean;
-    applyGlobalBlacklist: boolean;
-    extensions: string[];
-    blacklist: string[];
+  includeGlobalExtensions: boolean;
+  applyGlobalBlacklist: boolean;
+  filterUsingGitignore: boolean; // New field
+  projectExtensions: Record<string, string[]>;
+  globalExtensions: string[];
+  projectBlacklist: Record<string, string[]>;
+  globalBlacklist: string[];
 }

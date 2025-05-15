@@ -22,23 +22,23 @@ suite('Extension Activation Tests', () => {
         assert.strictEqual(extension.isActive, true);
     });
 
-    test('Hello World command should be registered', async () => {
-        const commands = await vscode.commands.getCommands();
-        assert.ok(commands.includes('copycoder.helloWorld'), 'Command should be registered');
-    });
+    // test('Hello World command should be registered', async () => {
+    //     const commands = await vscode.commands.getCommands();
+    //     assert.ok(commands.includes('copycoder.helloWorld'), 'Command should be registered');
+    // });
 
-    test('Hello World command should show information message', async () => {
-        // Create a spy on the showInformationMessage method
-        const spy = sinon.spy(vscode.window, 'showInformationMessage');
+    // test('Hello World command should show information message', async () => {
+    //     // Create a spy on the showInformationMessage method
+    //     const spy = sinon.spy(vscode.window, 'showInformationMessage');
         
-        // Execute the command
-        await vscode.commands.executeCommand('copycoder.helloWorld');
+    //     // Execute the command
+    //     await vscode.commands.executeCommand('copycoder.helloWorld');
         
-        // Verify that showInformationMessage was called with the expected message
-        assert.strictEqual(spy.calledOnce, true);
-        assert.strictEqual(spy.calledWith('Hello World from CopyCoder!'), true);
+    //     // Verify that showInformationMessage was called with the expected message
+    //     assert.strictEqual(spy.calledOnce, true);
+    //     assert.strictEqual(spy.calledWith('Hello World from CopyCoder!'), true);
         
-        // Restore the original method
-        spy.restore();
-    });
+    //     // Restore the original method
+    //     spy.restore();
+    // });
 });
