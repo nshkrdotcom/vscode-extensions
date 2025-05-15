@@ -1,0 +1,10 @@
+<svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Clipboard background -->
+  <rect x="4" y="4" width="20" height="20" rx="2" fill="#4A90E2" stroke="#FFFFFF" stroke-width="2"/>
+  <!-- Code snippet lines -->
+  <rect x="8" y="10" width="12" height="2" fill="#FFFFFF"/>
+  <rect x="8" y="14" width="8" height="2" fill="#FFFFFF"/>
+  <rect x="8" y="18" width="10" height="2" fill="#FFFFFF"/>
+  <!-- Clipboard clip -->
+  <path d="M10 4V6H18V4H10Z" fill="#FFFFFF"/>
+</svg>

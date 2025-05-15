@@ -36,7 +36,7 @@ suite('Extension Activation Tests', () => {
         
         // Verify that showInformationMessage was called with the expected message
         assert.strictEqual(spy.calledOnce, true);
-        assert.strictEqual(spy.calledWith('Hello from VS Code Extension!'), true);
+        assert.strictEqual(spy.calledWith('Hello World from CopyCoder!'), true);
         
         // Restore the original method
         spy.restore();

@@ -13,12 +13,41 @@
   "activationEvents": [],
   "main": "./dist/extension.js",
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "copycoder-sidebar",
+          "title": "CopyCoder",
+          "icon": "media/copycoder.svg"
+        }
+      ]
+    },
+    "views": {
+      "copycoder-sidebar": [
+        {
+          "id": "copycoderConfig",
+          "name": "Configuration"
+        }
+      ]
+    },
     "commands": [
       {
         "command": "copycoder.helloWorld",
-        "title": "Hello World"
+        "title": "CopyCoder: Hello World"
+      },
+      {
+        "command": "copycoder.configTreeItemClicked",
+        "title": "CopyCoder: Handle Config Item"
       }
-    ]
+    ],
+    "menus": {
+      "view/item/context": [
+        {
+          "command": "copycoder.configTreeItemClicked",
+          "when": "view == copycoderConfig"
+        }
+      ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run package",
@@ -49,6 +78,7 @@
     "mocha": "^11.2.2",
     "npm-run-all": "^4.1.5",
     "sinon": "^20.0.0",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "ts-node": "^10.9.2"
   }
 }

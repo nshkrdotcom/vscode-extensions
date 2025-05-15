@@ -29,3 +29,12 @@ export interface ParsedCodeBlock {
     extension: string;
     code: string;
 }
+
+
+
+export interface Config {
+    includeGlobalExtensions: boolean;
+    applyGlobalBlacklist: boolean;
+    extensions: string[];
+    blacklist: string[];
+}
