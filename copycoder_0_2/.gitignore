@@ -1,0 +1,39 @@
+# Node.js
+node_modules/
+npm-debug.log
+yarn-error.log
+package-lock.json
+
+# Build artifacts
+out/
+dist/
+*.js.map
+*.js  # Ignore compiled JS, except config files
+!esbuild.js  # Keep build script
+!.eslintrc.js  # Keep ESLint config
+
+# TypeScript
+*.tsbuildinfo
+
+# VS Code
+.vscode/*
+!.vscode/launch.json
+!.vscode/tasks.json
+!.vscode/extensions.json
+
+# OS and editor files
+.DS_Store
+*.swp
+*.swo
+Thumbs.db
+
+# Logs and temp files
+*.log
+*.tmp
+temp/
+
+# Custom config directory (if user edits manually)
+!.copycoder/config.json
+
+# Test coverage
+coverage/
