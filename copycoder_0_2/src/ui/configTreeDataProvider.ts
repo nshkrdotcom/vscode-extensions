@@ -13,7 +13,7 @@ export class ConfigTreeItem extends vscode.TreeItem {
     super(label, collapsibleState);
     if (commandId) {
       this.command = {
-        command: 'copycoder.handleConfigTreeItem',
+        command: 'copycoder.configTreeItemClicked',
         title: '',
         arguments: [this]
       };

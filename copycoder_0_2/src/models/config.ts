@@ -8,7 +8,7 @@ export interface Config {
   customBlacklist: { [projectType: string]: string[] };
 }
 
-// Store default extensions for reference but don't use them in DEFAULT_CONFIG
+// Store default extensions for reference
 export const AVAILABLE_EXTENSIONS: { [key: string]: string[] } = Object.freeze({
   'global': ['.md', '.txt', '.gitignore', '.env.example', '.editorconfig'],
   'powershell': ['.ps1', '.psm1', '.psd1'],
@@ -24,7 +24,7 @@ export const AVAILABLE_EXTENSIONS: { [key: string]: string[] } = Object.freeze({
   'wsl2': ['.sh', '.bash', '.zsh', '.ps1']
 });
 
-// Store default blacklist for reference but don't use them in DEFAULT_CONFIG
+// Store default blacklist for reference
 export const AVAILABLE_BLACKLIST: { [key: string]: string[] } = Object.freeze({
   'global': [
     '*.min.js',
@@ -69,28 +69,28 @@ export const AVAILABLE_BLACKLIST: { [key: string]: string[] } = Object.freeze({
   ]
 });
 
-// Default configuration that matches test expectations
-export const DEFAULT_CONFIG: Config = {
-  includeGlobalExtensions: true,
-  filterUsingGitignore: false,
-  projectTypes: [],
-  globalExtensions: ['.md'],
-  customExtensions: {},
-  globalBlacklist: [],
-  customBlacklist: {}
-};
-
-console.log('DEFAULT_EXTENSIONS keys:', Object.keys(AVAILABLE_EXTENSIONS)); // Debug
-console.log('projectTypes:', Object.keys(AVAILABLE_EXTENSIONS).filter(type => type !== 'global')); // Debug
-
+// Get project types (all keys except 'global')
 const projectTypes = Object.keys(AVAILABLE_EXTENSIONS).filter(type => type !== 'global');
 
+// Initialize custom extensions and blacklists
 const customExtensions: { [projectType: string]: string[] } = {};
 const customBlacklist: { [projectType: string]: string[] } = {};
 
+// Populate the custom extensions and blacklists
 projectTypes.forEach(type => {
   customExtensions[type] = [...AVAILABLE_EXTENSIONS[type]]; // Copy to prevent mutation
   customBlacklist[type] = [...(AVAILABLE_BLACKLIST[type] || [])];
 });
 
-console.log('DEFAULT_CONFIG.projectTypes:', DEFAULT_CONFIG.projectTypes); // Debug
+// Default configuration with properly populated values
+export const DEFAULT_CONFIG: Config = {
+  includeGlobalExtensions: true,
+  filterUsingGitignore: false,
+  projectTypes: [...projectTypes],
+  globalExtensions: [...AVAILABLE_EXTENSIONS.global],
+  customExtensions: customExtensions,
+  globalBlacklist: [...AVAILABLE_BLACKLIST.global],
+  customBlacklist: customBlacklist
+};
+
+console.log('DEFAULT_CONFIG initialized with projectTypes:', DEFAULT_CONFIG.projectTypes);
