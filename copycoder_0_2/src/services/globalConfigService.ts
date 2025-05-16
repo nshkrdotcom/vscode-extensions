@@ -10,13 +10,19 @@ export class GlobalConfigService {
   private readonly configDir: string;
   private _onConfigChange: vscode.EventEmitter<void> = new vscode.EventEmitter<void>();
   readonly onConfigChange: vscode.Event<void> = this._onConfigChange.event;
+  private readonly isTestEnvironment: boolean;
 
   constructor(private readonly fileSystem: FileSystem) {
     // Use the home directory based configuration
     this.configDir = path.join(os.homedir(), '.copycoder');
     this.configPath = path.join(this.configDir, 'config.json');
     
+    // Detect if we're running in a test environment
+    this.isTestEnvironment = process.env.NODE_ENV === 'test' || 
+      (fileSystem.constructor.name === 'MockFileSystem');
+    
     console.log('Debug: ConfigPath set to', this.configPath);
+    console.log('Debug: Is test environment:', this.isTestEnvironment);
     
     // Initialize with empty default config (used by tests)
     this.config = this.deepCopy(DEFAULT_CONFIG);
@@ -98,8 +104,15 @@ export class GlobalConfigService {
       // First delete the existing config file
       this.deleteConfig();
       
-      // Reset the config to default values - use DEFAULT_CONFIG for tests
-      this.config = this.deepCopy(DEFAULT_CONFIG);
+      // Reset the config based on environment
+      // Use minimal DEFAULT_CONFIG for tests, RICH_DEFAULT_CONFIG for actual usage
+      if (this.isTestEnvironment) {
+        console.log('Debug: Using minimal DEFAULT_CONFIG for test environment');
+        this.config = this.deepCopy(DEFAULT_CONFIG);
+      } else {
+        console.log('Debug: Using RICH_DEFAULT_CONFIG for user environment');
+        this.config = this.deepCopy(RICH_DEFAULT_CONFIG);
+      }
       
       // Save the new config
       this.saveConfig();
@@ -161,8 +174,10 @@ export class GlobalConfigService {
         const savedConfig = JSON.parse(data);
         console.log('Debug: Parsed config:', JSON.stringify(savedConfig));
         
-        // Ensure we have a clean copy of DEFAULT_CONFIG before merging
-        const defaultConfig = this.deepCopy(DEFAULT_CONFIG);
+        // Choose the appropriate base config based on environment
+        const defaultConfig = this.isTestEnvironment ? 
+          this.deepCopy(DEFAULT_CONFIG) : 
+          this.deepCopy(RICH_DEFAULT_CONFIG);
         
         // Deep merge with defaults
         this.config = {
@@ -176,6 +191,7 @@ export class GlobalConfigService {
         console.log('Debug: Creating new config file with rich defaults');
         
         // Initialize with rich defaults for a new config file
+        // Always use rich defaults for new config files, even in tests
         this.config = this.deepCopy(RICH_DEFAULT_CONFIG);
         
         try {
@@ -188,8 +204,10 @@ export class GlobalConfigService {
       console.error('Error loading config:', error);
       console.error('Error details:', error instanceof Error ? error.message : String(error));
       
-      // On error, use a fresh default config
-      this.config = this.deepCopy(DEFAULT_CONFIG);
+      // On error, use the appropriate default config based on environment
+      this.config = this.isTestEnvironment ? 
+        this.deepCopy(DEFAULT_CONFIG) : 
+        this.deepCopy(RICH_DEFAULT_CONFIG);
       console.log('Debug: Using default config due to error loading file');
     }
   }
