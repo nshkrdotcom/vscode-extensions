@@ -52,13 +52,32 @@ suite('CopyCommandHandler Tests', () => {
   });
 
   test('copyOpenFiles with open editors', async () => {
+    // Create a simplified editor stub
     const editorStub = {
       document: {
-        uri: { fsPath: 'test.js' },
+        uri: { 
+          fsPath: 'test.js',
+          toString: () => 'file:///test.js',
+          scheme: 'file'
+        },
+        fileName: 'test.js',
         getText: () => 'console.log("Hello");'
       }
     };
+    
+    // Simple approach: disable tab groups API for tests
+    // This forces our code to fall back to visibleTextEditors which is easier to mock
+    sinon.stub(vscode.window, 'tabGroups').value(undefined);
+    
+    // Mock visible editors with our stub
     sinon.stub(vscode.window, 'visibleTextEditors').value([editorStub]);
+    
+    // Also stub workspace.asRelativePath which is used by our function
+    const asRelativePathStub = sinon.stub();
+    asRelativePathStub.returns('test.js');
+    sinon.stub(vscode.workspace, 'asRelativePath').callsFake(asRelativePathStub);
+    
+    // Set up the clipboard spy
     const clipboardSpy = sinon.spy(clipboardService, 'copyToClipboard');
 
     await handler.copyOpenFiles();
