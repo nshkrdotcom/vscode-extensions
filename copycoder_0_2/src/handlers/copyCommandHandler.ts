@@ -42,16 +42,43 @@ export class CopyCommandHandler {
         return;
       }
       
-      const filesToCopy: FileContent[] = openEditors.map(editor => {
-        const path = vscode.workspace.asRelativePath(editor.document.uri, false) || editor.document.uri.fsPath;
-        console.log(`CopyCommandHandler.copyOpenFiles - Processing editor with file: ${path}`);
-        return {
-          path,
-          content: editor.document.getText()
-        };
-      });
+      const filesToCopy: FileContent[] = [];
+      
+      // Collect all editor contents with a safer approach
+      for (const editor of openEditors) {
+        try {
+          // Extract a path name using whatever is available
+          let path = "unknown";
+          
+          if (editor.document.uri) {
+            // For VS Code editors
+            try {
+              path = vscode.workspace.asRelativePath(editor.document.uri, false);
+            } catch (e) {
+              // Fallback for test stubs
+              path = editor.document.uri.toString();
+            }
+          } else if (editor.document.fileName) {
+            path = editor.document.fileName;
+          }
+          
+          console.log(`CopyCommandHandler.copyOpenFiles - Processing editor with file: ${path}`);
+          
+          filesToCopy.push({
+            path,
+            content: editor.document.getText()
+          });
+        } catch (e) {
+          console.error(`Error processing editor: ${e}`);
+        }
+      }
       
       console.log(`CopyCommandHandler.copyOpenFiles - Preparing to copy ${filesToCopy.length} files`);
+      
+      if (filesToCopy.length === 0) {
+        MessageService.showInfo('No files to copy.');
+        return;
+      }
       
       const formatted = this.clipboardService.formatFilesForClipboard(filesToCopy);
       await this.clipboardService.copyToClipboard(formatted);
