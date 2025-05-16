@@ -11,7 +11,8 @@ CopyCoder is a VS Code extension designed to easily copy your code for sharing w
 - **File Extension Filtering**: Configure which file types to include based on project type
 - **Blacklist Support**: Exclude specific files or patterns from being copied
 
-![CopyCoder Features](images/copycoder-sidebar.png)
+<!-- TODO: Add screenshot of CopyCoder sidebar here -->
+<!-- ![CopyCoder Features](images/copycoder-sidebar.png) -->
 
 ## Installation
 
