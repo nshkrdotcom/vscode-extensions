@@ -106,19 +106,42 @@ export class ConfigTreeDataProvider implements vscode.TreeDataProvider<vscode.Tr
 
   private getGeneralItems(): vscode.TreeItem[] {
     const config = this.configService.getConfig();
+    
+    // Create tree items with original labels for test compatibility
+    const includeGlobalItem = new ConfigTreeItem(
+      'Include Global Extensions',
+      vscode.TreeItemCollapsibleState.None,
+      'toggleIncludeGlobalExtensions',
+      'general-includeGlobalExtensions'
+    );
+    
+    const filterGitignoreItem = new ConfigTreeItem(
+      'Filter Using Gitignore',
+      vscode.TreeItemCollapsibleState.None,
+      'toggleFilterUsingGitignore',
+      'general-filterUsingGitignore'
+    );
+    
+    // Apply color theming based on state
+    includeGlobalItem.iconPath = new vscode.ThemeIcon(config.includeGlobalExtensions ? 'check' : 'x');
+    filterGitignoreItem.iconPath = new vscode.ThemeIcon(config.filterUsingGitignore ? 'check' : 'x');
+    
+    // Add description to show status (this appears next to the label)
+    includeGlobalItem.description = config.includeGlobalExtensions ? 'Enabled' : 'Disabled';
+    filterGitignoreItem.description = config.filterUsingGitignore ? 'Enabled' : 'Disabled';
+    
+    // Set tooltip with additional information
+    includeGlobalItem.tooltip = config.includeGlobalExtensions 
+      ? 'Global extensions will be included when copying files (click to disable)' 
+      : 'Global extensions are not included when copying files (click to enable)';
+    
+    filterGitignoreItem.tooltip = config.filterUsingGitignore 
+      ? 'Files listed in .gitignore will be excluded when copying (click to disable)' 
+      : 'Files in .gitignore are not filtered when copying (click to enable)';
+    
     return [
-      new ConfigTreeItem(
-        'Include Global Extensions',
-        vscode.TreeItemCollapsibleState.None,
-        'toggleIncludeGlobalExtensions',
-        'general-includeGlobalExtensions'
-      ),
-      new ConfigTreeItem(
-        'Filter Using Gitignore',
-        vscode.TreeItemCollapsibleState.None,
-        'toggleFilterUsingGitignore',
-        'general-filterUsingGitignore'
-      ),
+      includeGlobalItem,
+      filterGitignoreItem,
       new ConfigTreeItem(
         'Reset Configuration',
         vscode.TreeItemCollapsibleState.None,
