@@ -2,7 +2,6 @@
 	"compilerOptions": {
 		"module": "Node16",
 		"target": "ES2022",
-		"outDir": "out",
 		"lib": [
 			"ES2022"
 		],
@@ -15,3 +14,27 @@
 		// "noUnusedParameters": true,  /* Report errors on unused parameters. */
 	}
 }
+
+
+
+// {
+//   "compilerOptions": {
+//     "module": "commonjs",
+//     "target": "es2020",
+//     "outDir": "out",
+//     "lib": ["es2020"],
+//     "sourceMap": true,
+//     "rootDir": ".",
+//     "strict": true,
+//     "noImplicitAny": true,
+//     "noImplicitThis": true,
+//     "alwaysStrict": true,
+//     "noUnusedLocals": true,
+//     "noUnusedParameters": true,
+//     "noImplicitReturns": true,
+//     "noFallthroughCasesInSwitch": true,
+//     "esModuleInterop": true
+//   },
+//   "include": ["src/**/*", "src/test/**/*"],
+//   "exclude": ["node_modules", ".vscode-test"]
+// }

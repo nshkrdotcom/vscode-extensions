@@ -1,147 +1,129 @@
 {
-    "name":  "copycoder",
-    "displayName":  "Copy Coder",
-    "description":  "Copy content from all open files or project files with configurable extensions.",
-    "version":  "0.1.52",
-    "publisher":  "nshkrdotcom",
-    "repository":  {
-                       "type":  "git",
-                       "url":  "https://github.com/nshkrdotcom/vscode-extensions.git",
-                       "directory":  "copycoder"
-                   },
-    "engines":  {
-                    "vscode":  "^1.85.0"
-                },
-    "categories":  [
-                       "Other"
-                   ],
-    "activationEvents":  [
-                             "onStartupFinished",
-                             "onCommand:copycoder.copyAllFiles",
-                             "onCommand:copycoder.copyAllProjectFiles",
-                             "onCommand:copycoder.configureExtensions",
-                             "onCommand:copycoder.addCustomCommand"
-                         ],
-    "main":  "./out/extension.js",
-    "icon":  "resources/icon.png",
-    "contributes":  {
-                        "commands":  [
-                                         {
-                                             "command":  "copycoder.copyAllFiles",
-                                             "title":  "Copy All Open Files",
-                                             "category":  "Copy Code",
-                                             "icon":  "$(files)"
-                                         },
-                                         {
-                                             "command":  "copycoder.copyAllProjectFiles",
-                                             "title":  "Copy All Project Files",
-                                             "category":  "Copy Code",
-                                             "icon":  "$(copy)"
-                                         },
-                                         {
-                                             "command":  "copycoder.configureExtensions",
-                                             "title":  "Configure Extensions",
-                                             "category":  "Copy Code",
-                                             "icon":  "$(folder)"
-                                         },
-                                         {
-                                             "command":  "copycoder.toggleProjectType",
-                                             "title":  "Toggle Project Type",
-                                             "category":  "Copy Code",
-                                             "icon":  "$(files-alt)"
-                                         },
-                                         {
-                                             "command":  "copycoder.addCustomExtension",
-                                             "title":  "Add Custom Extension",
-                                             "category":  "Copy Code",
-                                             "icon":  "$(export)"
-                                         },
-                                         {
-                                             "command":  "copycoder.addCustomCommand",
-                                             "title":  "Add Custom Copy Command",
-                                             "category":  "Copy Code",
-                                             "icon":  "$(export)"
-                                         },
-                                         {
-                                             "command":  "copycoder.parseClipboard",
-                                             "title":  "Parse Code Blocks from Clipboard",
-                                             "category":  "Copy Code",
-                                             "icon":  "$(clippy)"
-                                         }
-                                     ],
-                        "viewsContainers":  {
-                                                "activitybar":  [
-                                                                    {
-                                                                        "id":  "copycoder-view-container",
-                                                                        "title":  "Copy Code Actions",
-                                                                        "icon":  "$(copy)"
-                                                                    }
-                                                                ]
-                                            },
-                        "views":  {
-                                      "copycoder-view-container":  [
-                                                                       {
-                                                                           "id":  "copycoder-actions",
-                                                                           "name":  "Actions"
-                                                                       }
-                                                                   ]
-                                  },
-                        "menus":  {
-                                      "view/title":  [
-                                                         {
-                                                             "command":  "copycoder.copyAllFiles",
-                                                             "when":  "view == copycoder-actions",
-                                                             "group":  "navigation",
-                                                             "icon":  "$(files-alt)"
-                                                         },
-                                                         {
-                                                             "command":  "copycoder.parseClipboard",
-                                                             "when":  "view == copycoder-actions",
-                                                             "group":  "navigation@12"
-                                                         }
-                                                     ],
-                                      "editor/title":  [
-                                                           {
-                                                               "when":  "resourceScheme == \u0027file\u0027",
-                                                               "command":  "copycoder.copyAllFiles",
-                                                               "group":  "navigation@10"
-                                                           },
-                                                           {
-                                                               "when":  "resourceScheme == \u0027file\u0027",
-                                                               "command":  "copycoder.copyAllProjectFiles",
-                                                               "group":  "navigation@11"
-                                                           }
-                                                       ],
-                                      "explorer/context":  [
-                                                               {
-                                                                   "when":  "isFolder",
-                                                                   "command":  "copycoder.copyAllProjectFiles",
-                                                                   "group":  "2_workspace@10"
-                                                               }
-                                                           ]
-                                  }
-                    },
-    "scripts":  {
-                    "vscode:prepublish":  "npm run compile",
-                    "compile":  "tsc -p ./",
-                    "watch":  "tsc -watch -p ./",
-                    "pretest":  "npm run compile \u0026\u0026 npm run lint",
-                    "lint":  "eslint src --ext ts",
-                    "test":  "vscode-test",
-                    "package":  "vsce package"
-                },
-    "dependencies":  {
-                         "ignore":  "^5.3.0"
-                     },
-    "devDependencies":  {
-                            "@types/vscode":  "^1.85.0",
-                            "@types/mocha":  "^10.0.6",
-                            "@types/node":  "20.x",
-                            "@typescript-eslint/eslint-plugin":  "^6.15.0",
-                            "@typescript-eslint/parser":  "^6.15.0",
-                            "eslint":  "^8.56.0",
-                            "typescript":  "^5.3.3",
-                            "@vscode/test-cli":  "^0.0.4",
-                            "@vscode/test-electron":  "^2.3.8"
-                        }
+  "name": "copycoder",
+  "publisher": "copycoder",
+  "displayName": "copycoder",
+  "description": "copycoder",
+  "version": "0.2.1",
+  "publisher":  "nshkrdotcom",
+  "repository":  {
+    "type":  "git",
+    "url":  "https://github.com/nshkrdotcom/vscode-extensions.git",
+    "directory":  "copycoder"
+  },  
+  "engines": {
+    "vscode": "^1.100.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./dist/extension.js",
+  "icon":  "resources/icon.png",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "copycoder-sidebar",
+          "title": "CopyCoder",
+          "icon": "$(clippy)"
+        }
+      ]
+    },
+    "views": {
+      "copycoder-sidebar": [
+        {
+          "id": "copycoderConfig",
+          "name": "Config"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "copycoder.helloWorld",
+        "title": "CopyCoder: Hello World"
+      },
+      {
+        "command": "copycoder.configTreeItemClicked",
+        "title": "CopyCoder: Config Tree Item Clicked"
+      },
+      {
+        "command": "copycoder.copyAllOpenFiles",
+        "title": "Copy Open Files"
+      },
+      {
+        "command": "copycoder.copyAllProjectFiles",
+        "title": "Copy All Files"
+      },
+      {
+        "command": "copycoder.parseClipboard",
+        "title": "CopyCoder: Parse Clipboard"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "copycoder.copyAllOpenFiles",
+          "when": "view == copycoderConfig",
+          "group": "navigation",
+          "title": "Copy Open Files",
+          "icon": "$(files-alt)"
+        },
+        {
+          "command": "copycoder.copyAllProjectFiles",
+          "when": "view == copycoderConfig",
+          "group": "navigation",
+          "title": "Copy All Files",
+          "icon": "$(copy)"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "copycoder.configTreeItemClicked",
+          "when": "false"
+        },
+        {
+          "command": "copycoder.copyAllOpenFiles",
+          "when": "editorHasDocument"
+        },
+        {
+          "command": "copycoder.copyAllProjectFiles",
+          "when": "workspaceFolderCount > 0"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run package",
+    "compile": "npm run check-types && npm run lint && node esbuild.js",
+    "watch": "npm-run-all -p watch:*",
+    "watch:esbuild": "node esbuild.js --watch",
+    "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
+    "package": "npm run check-types && npm run lint && node esbuild.js --production",
+    "compile-tests": "tsc -p . --outDir out",
+    "watch-tests": "tsc -p . -w --outDir out",
+    "pretest": "npm run compile-tests && npm run compile && npm run lint",
+    "check-types": "tsc --noEmit",
+    "lint": "eslint src",
+    "test": "vscode-test --config .vscode-test.mjs",
+    "debug-compile-tests": "tsc -p . --outDir out --listFiles"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "20.x",
+    "@types/sinon": "^17.0.4",
+    "@types/vscode": "^1.100.0",
+    "@typescript-eslint/eslint-plugin": "^8.31.1",
+    "@typescript-eslint/parser": "^8.32.1",
+    "@vscode/test-cli": "^0.0.10",
+    "@vscode/test-electron": "^2.5.2",
+    "chai": "^5.2.0",
+    "esbuild": "^0.25.4",
+    "eslint": "^9.26.0",
+    "glob": "^11.0.2",
+    "mocha": "^11.2.2",
+    "npm-run-all": "^4.1.5",
+    "sinon": "^20.0.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
+  }
 }
