@@ -101,11 +101,13 @@ export class FileService {
     const files: FileContent[] = [];
     const allowedExtensions = this.getAllowedExtensions(config);
     const blacklistedFiles = this.getBlacklistedFiles(config);
-    const gitignorePatterns = this.parseGitignore(workspaceRoot);
+    const gitignorePatterns = config.filterUsingGitignore ? this.parseGitignore(workspaceRoot) : [];
+    
     console.log('FileService.getFiles - workspaceRoot:', workspaceRoot);
     console.log('FileService.getFiles - allowedExtensions:', [...allowedExtensions]);
     console.log('FileService.getFiles - blacklistedFiles:', [...blacklistedFiles]);
     console.log('FileService.getFiles - gitignorePatterns:', gitignorePatterns);
+    console.log('FileService.getFiles - filterUsingGitignore:', config.filterUsingGitignore);
 
     const walkDir = (dir: string) => {
       if (!this.fileSystem.existsSync(dir)) {
@@ -134,7 +136,7 @@ export class FileService {
         }
 
         // Check blacklist
-        if (blacklistedFiles.has(entry) || blacklistedFiles.has(relativePath) || relativePath.includes('node_modules') || relativePath.includes('.git')) {
+        if (blacklistedFiles.has(entry) || blacklistedFiles.has(relativePath)) {
           console.log(`FileService.getFiles - excluding ${relativePath} (blacklisted)`);
           continue;
         }
