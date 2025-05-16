@@ -35,18 +35,29 @@ export class CopyCommandHandler {
   async copyOpenFiles(): Promise<void> {
     try {
       const openEditors = vscode.window.visibleTextEditors;
+      console.log(`CopyCommandHandler.copyOpenFiles - Found ${openEditors.length} visible text editors`);
+      
       if (openEditors.length === 0) {
         MessageService.showInfo('No open files to copy.');
         return;
       }
-      const filesToCopy: FileContent[] = openEditors.map(editor => ({
-        path: vscode.workspace.asRelativePath(editor.document.uri, false) || editor.document.uri.fsPath,
-        content: editor.document.getText()
-      }));
+      
+      const filesToCopy: FileContent[] = openEditors.map(editor => {
+        const path = vscode.workspace.asRelativePath(editor.document.uri, false) || editor.document.uri.fsPath;
+        console.log(`CopyCommandHandler.copyOpenFiles - Processing editor with file: ${path}`);
+        return {
+          path,
+          content: editor.document.getText()
+        };
+      });
+      
+      console.log(`CopyCommandHandler.copyOpenFiles - Preparing to copy ${filesToCopy.length} files`);
+      
       const formatted = this.clipboardService.formatFilesForClipboard(filesToCopy);
       await this.clipboardService.copyToClipboard(formatted);
       MessageService.showInfo(`Copied content of ${filesToCopy.length} open files.`);
     } catch (error) {
+      console.error(`Error in copyOpenFiles: ${error}`);
       MessageService.showError(`Failed to copy open files: ${error}`);
     }
   }

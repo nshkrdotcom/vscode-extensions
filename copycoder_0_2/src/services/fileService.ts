@@ -20,19 +20,38 @@ export class FileService {
     const patterns = this.buildPatterns(config);
 
     const includePattern = patterns.extensions.map(ext => `**/*${ext}`).join('|');
-    const excludePattern = patterns.blacklist.map(item => `**/${item}/**`).join('|');
+    const excludePattern = patterns.blacklist.length > 0 ? patterns.blacklist.map(item => `**/${item}/**`).join('|') : '';
+    
+    console.log('FileService.scanWorkspaceFiles - workspaceRoot:', workspaceRoot);
+    console.log('FileService.scanWorkspaceFiles - includePattern:', includePattern);
+    console.log('FileService.scanWorkspaceFiles - excludePattern:', excludePattern);
+    console.log('FileService.scanWorkspaceFiles - filterUsingGitignore:', config.filterUsingGitignore);
 
     try {
-      const uris = await vscode.workspace.findFiles(includePattern, excludePattern);
+      const uris = excludePattern
+        ? await vscode.workspace.findFiles(includePattern, excludePattern)
+        : await vscode.workspace.findFiles(includePattern);
+      
+      console.log(`FileService.scanWorkspaceFiles - found ${uris.length} files matching patterns`);
+      
       for (const uri of uris) {
         const relativePath = vscode.workspace.asRelativePath(uri, false);
-        const content = this.fileSystem.readFileSync(uri.fsPath, 'utf-8');
-        files.push({ path: relativePath, content });
+        console.log(`FileService.scanWorkspaceFiles - processing ${relativePath}`);
+        
+        try {
+          const content = this.fileSystem.readFileSync(uri.fsPath, 'utf-8');
+          files.push({ path: relativePath, content });
+          console.log(`FileService.scanWorkspaceFiles - added ${relativePath} to results`);
+        } catch (error) {
+          console.error(`Error reading file ${uri.fsPath}: ${error}`);
+        }
       }
     } catch (error) {
+      console.error(`Failed to scan files: ${error}`);
       throw new Error(`Failed to scan files: ${error}`);
     }
 
+    console.log(`FileService.scanWorkspaceFiles - returning ${files.length} files`);
     return files;
   }
 
