@@ -29,7 +29,7 @@ suite('ConfigTreeDataProvider Tests', () => {
     assert.strictEqual(children[1].label, 'Project Types', 'Second category should be Project Types');
     assert.strictEqual(children[2].label, 'Extensions', 'Third category should be Extensions');
     assert.strictEqual(children[3].label, 'Blacklist', 'Fourth category should be Blacklist');
-    assert.strictEqual(children[0].collapsibleState, vscode.TreeItemCollapsibleState.Collapsed, 'Categories should be collapsible');
+    assert.strictEqual(children[0].collapsibleState, vscode.TreeItemCollapsibleState.Expanded, 'Categories should be collapsible');
     assert.strictEqual(children[0].type, 'category', 'Categories should have category type');
   });
 

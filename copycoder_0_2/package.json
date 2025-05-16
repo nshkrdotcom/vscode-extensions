@@ -38,6 +38,14 @@
       {
         "command": "copycoder.configTreeItemClicked",
         "title": "CopyCoder: Handle Config Item"
+      },
+      {
+        "command": "copycoder.copyFiles",
+        "title": "CopyCoder: Copy Files to Clipboard"
+      },
+      {
+        "command": "copycoder.parseClipboard",
+        "title": "CopyCoder: Parse Clipboard Content"
       }
     ],
     "menus": {
@@ -45,6 +53,24 @@
         {
           "command": "copycoder.configTreeItemClicked",
           "when": "view == copycoderConfig"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "copycoder.helloWorld",
+          "when": "true"
+        },
+        {
+          "command": "copycoder.copyFiles",
+          "when": "true"
+        },
+        {
+          "command": "copycoder.parseClipboard",
+          "when": "true"
+        },
+        {
+          "command": "copycoder.configTreeItemClicked",
+          "when": "false"
         }
       ]
     }

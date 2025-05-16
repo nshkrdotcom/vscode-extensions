@@ -34,10 +34,10 @@ export class ConfigTreeDataProvider implements vscode.TreeDataProvider<ConfigTre
   getChildren(element?: ConfigTreeItem): ConfigTreeItem[] {
     if (!element) {
       return [
-        new ConfigTreeItem('General', vscode.TreeItemCollapsibleState.Collapsed, 'category'),
-        new ConfigTreeItem('Project Types', vscode.TreeItemCollapsibleState.Collapsed, 'category'),
-        new ConfigTreeItem('Extensions', vscode.TreeItemCollapsibleState.Collapsed, 'category'),
-        new ConfigTreeItem('Blacklist', vscode.TreeItemCollapsibleState.Collapsed, 'category'),
+        new ConfigTreeItem('General', vscode.TreeItemCollapsibleState.Expanded, 'category'),
+        new ConfigTreeItem('Project Types', vscode.TreeItemCollapsibleState.Expanded, 'category'),
+        new ConfigTreeItem('Extensions', vscode.TreeItemCollapsibleState.Expanded, 'category'),
+        new ConfigTreeItem('Blacklist', vscode.TreeItemCollapsibleState.Expanded, 'category'),
       ];
     }
 
