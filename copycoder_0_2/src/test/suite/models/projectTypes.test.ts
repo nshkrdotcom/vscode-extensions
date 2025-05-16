@@ -1,5 +1,6 @@
 import * as assert from 'assert';
 import { AVAILABLE_EXTENSIONS, AVAILABLE_BLACKLIST } from '../../../models/config';
+import { PROJECT_TYPES } from '../../../constants/configConstants';
 import { MockFileSystem } from '../mockFileSystem'; // Import MockFileSystem for consistency
 
 suite('Project Types Tests', () => {
@@ -9,21 +10,10 @@ suite('Project Types Tests', () => {
   });
 
   test('AVAILABLE_EXTENSIONS should have expected project types', () => {
-    const expectedTypes = [
-      'powershell',
-      'terraform',
-      'bash',
-      'php',
-      'mysql',
-      'postgres',
-      'elixir',
-      'python',
-      'node',
-      'vscode',
-      'wsl2'
-    ];
+    // Now using the PROJECT_TYPES constant from configConstants
+    const expectedTypes = PROJECT_TYPES;
     const actualTypes = Object.keys(AVAILABLE_EXTENSIONS).filter(type => type !== 'global');
-    assert.strictEqual(actualTypes.length, 11, 'should include all project types');
+    assert.strictEqual(actualTypes.length, expectedTypes.length, `should include all ${expectedTypes.length} project types`);
     expectedTypes.forEach(type => {
       assert.ok(Object.keys(AVAILABLE_EXTENSIONS).includes(type), `should include ${type} project type`);
     });
