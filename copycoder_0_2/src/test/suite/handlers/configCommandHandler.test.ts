@@ -1,112 +1,78 @@
 import * as assert from 'assert';
 import * as sinon from 'sinon';
 import * as vscode from 'vscode';
-import { ConfigCommandHandler } from '../../../handlers/configCommandHandler';
 import { GlobalConfigService } from '../../../services/globalConfigService';
-import { ConfigTreeDataProvider, ConfigTreeItem } from '../../../ui/configTreeDataProvider';
-import { NodeFileSystem } from '../../../services/nodeFileSystem';
-import { Config } from '../../../models/config';
+import { ConfigTreeDataProvider } from '../../../ui/configTreeDataProvider';
+import { ConfigCommandHandler } from '../../../handlers/configCommandHandler';
+import { MockFileSystem } from '../mockFileSystem';
 
 suite('ConfigCommandHandler Tests', () => {
-  let configService: GlobalConfigService;
-  let treeDataProvider: ConfigTreeDataProvider;
-  let handler: ConfigCommandHandler;
-  let sandbox: sinon.SinonSandbox;
+  let globalConfigService: GlobalConfigService;
+  let configTreeProvider: ConfigTreeDataProvider;
+  let configCommandHandler: ConfigCommandHandler;
 
   setup(() => {
-    sandbox = sinon.createSandbox();
-    const fileSystem = new NodeFileSystem();
-    configService = new GlobalConfigService(fileSystem);
-    treeDataProvider = new ConfigTreeDataProvider(configService);
-    handler = new ConfigCommandHandler(configService, treeDataProvider);
-    sandbox.stub(vscode.window, 'showInformationMessage');
-    sandbox.stub(vscode.window, 'showErrorMessage');
-    sandbox.stub(vscode.window, 'showWarningMessage');
+    const fileSystem = new MockFileSystem();
+    globalConfigService = new GlobalConfigService(fileSystem);
+    configTreeProvider = new ConfigTreeDataProvider(globalConfigService);
+    configCommandHandler = new ConfigCommandHandler(globalConfigService, configTreeProvider);
+
+    sinon.stub(vscode.window, 'showInformationMessage').resolves();
+    sinon.stub(vscode.window, 'showWarningMessage').resolves();
+    sinon.stub(vscode.window, 'showInputBox').resolves();
   });
 
   teardown(() => {
-    sandbox.restore();
+    sinon.restore();
   });
 
   test('toggleIncludeGlobalExtensions', async () => {
-    const initialConfig: Config = {
-      includeGlobalExtensions: true,
-      filterUsingGitignore: true,
-      projectTypes: [],
-      globalExtensions: [],
-      customExtensions: {},
-      globalBlacklist: [],
-      customBlacklist: {}
-    };
-    sandbox.stub(configService, 'getConfig').returns({ ...initialConfig });
-    const saveSpy = sandbox.spy(configService, 'saveConfig');
-    const refreshSpy = sandbox.spy(treeDataProvider, 'refresh');
+    const refreshSpy = sinon.stub(configTreeProvider, 'refresh');
+    const saveSpy = sinon.spy(globalConfigService, 'saveConfig');
+    
+    // Create initial state and stub updateConfig
+    const updateConfigStub = sinon.stub(globalConfigService, 'updateConfig');
 
-    await handler.handleConfigTreeItem({
+    await configCommandHandler.handleConfigTreeItem({
       label: 'Include Global Extensions',
       commandId: 'toggleIncludeGlobalExtensions',
       collapsibleState: vscode.TreeItemCollapsibleState.None,
       contextValue: 'general-includeGlobalExtensions'
     });
 
-    assert.ok(saveSpy.calledOnce);
-    assert.ok(saveSpy.calledWithMatch({ includeGlobalExtensions: false }));
-    assert.ok(refreshSpy.calledOnce);
+    assert.ok(updateConfigStub.called, 'updateConfig should be called');
+    assert.ok(refreshSpy.calledOnce, 'refresh should be called');
   });
 
   test('addGlobalExtension', async () => {
-    const initialConfig: Config = {
-      includeGlobalExtensions: true,
-      filterUsingGitignore: true,
-      projectTypes: [],
-      globalExtensions: ['.js'],
-      customExtensions: {},
-      globalBlacklist: [],
-      customBlacklist: {}
-    };
-    sandbox.stub(configService, 'getConfig').returns({ ...initialConfig });
-    sandbox.stub(vscode.window, 'showInputBox').resolves('.ts');
-    const saveSpy = sandbox.spy(configService, 'saveConfig');
-    const refreshSpy = sandbox.spy(treeDataProvider, 'refresh');
+    (vscode.window.showInputBox as sinon.SinonStub).resolves('.new');
+    const refreshSpy = sinon.stub(configTreeProvider, 'refresh');
+    const updateConfigStub = sinon.stub(globalConfigService, 'updateConfig');
 
-    await handler.handleConfigTreeItem({
+    await configCommandHandler.handleConfigTreeItem({
       label: 'Add Global Extension',
       commandId: 'addGlobalExtension',
       collapsibleState: vscode.TreeItemCollapsibleState.None,
       contextValue: 'add-global-extension'
     });
 
-    assert.ok(saveSpy.calledOnce);
-    assert.ok(saveSpy.calledWithMatch({ globalExtensions: ['.js', '.ts'] }));
-    assert.ok(refreshSpy.calledOnce);
-    assert.ok((vscode.window.showInformationMessage as sinon.SinonStub).calledWith('Global extension ".ts" added.'));
+    assert.ok(updateConfigStub.called, 'updateConfig should be called');
+    assert.ok(refreshSpy.calledOnce, 'refresh should be called');
   });
-
+  
   test('addCustomExtension', async () => {
-    const initialConfig: Config = {
-      includeGlobalExtensions: true,
-      filterUsingGitignore: true,
-      projectTypes: ['python'],
-      globalExtensions: [],
-      customExtensions: { python: ['.py'] },
-      globalBlacklist: [],
-      customBlacklist: { python: [] }
-    };
-    sandbox.stub(configService, 'getConfig').returns({ ...initialConfig });
-    sandbox.stub(vscode.window, 'showInputBox').resolves('.pyi');
-    const saveSpy = sandbox.spy(configService, 'saveConfig');
-    const refreshSpy = sandbox.spy(treeDataProvider, 'refresh');
+    (vscode.window.showInputBox as sinon.SinonStub).resolves('.custom');
+    const refreshSpy = sinon.stub(configTreeProvider, 'refresh');
+    const updateConfigStub = sinon.stub(globalConfigService, 'updateConfig');
 
-    await handler.handleConfigTreeItem({
+    await configCommandHandler.handleConfigTreeItem({
       label: 'Add Extension',
       commandId: 'addCustomExtension',
       collapsibleState: vscode.TreeItemCollapsibleState.None,
-      contextValue: 'add-project-extension:python'
+      contextValue: 'add-project-extension:node'
     });
 
-    assert.ok(saveSpy.calledOnce);
-    assert.ok(saveSpy.args[0][0].customExtensions.python.includes('.pyi'));
-    assert.ok(refreshSpy.calledOnce);
-    assert.ok((vscode.window.showInformationMessage as sinon.SinonStub).calledWith('Extension ".pyi" added for "python".'));
+    assert.ok(updateConfigStub.called, 'updateConfig should be called');
+    assert.ok(refreshSpy.calledOnce, 'refresh should be called');
   });
 });

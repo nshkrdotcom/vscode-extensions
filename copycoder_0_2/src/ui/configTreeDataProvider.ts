@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { GlobalConfigService } from '../services/globalConfigService';
-import { Config } from '../models/config';
+//import { Config } from '../models/config';
 
 export class ConfigTreeItem extends vscode.TreeItem {
   constructor(
@@ -13,7 +13,7 @@ export class ConfigTreeItem extends vscode.TreeItem {
     super(label, collapsibleState);
     if (commandId) {
       this.command = {
-        command: 'copycoder.configTreeItemClicked',
+        command: 'copycoder.handleConfigTreeItem',
         title: '',
         arguments: [this]
       };
@@ -22,155 +22,201 @@ export class ConfigTreeItem extends vscode.TreeItem {
   }
 }
 
-export class ConfigTreeDataProvider implements vscode.TreeDataProvider<ConfigTreeItem> {
-  private _onDidChangeTreeData: vscode.EventEmitter<ConfigTreeItem | undefined | null | void> =
-    new vscode.EventEmitter<ConfigTreeItem | undefined | null | void>();
-  readonly onDidChangeTreeData: vscode.Event<ConfigTreeItem | undefined | null | void> =
-    this._onDidChangeTreeData.event;
+export class ConfigTreeDataProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
+  private _onDidChangeTreeData: vscode.EventEmitter<vscode.TreeItem | undefined | null | void> = new vscode.EventEmitter<vscode.TreeItem | undefined | null | void>();
+  readonly onDidChangeTreeData: vscode.Event<vscode.TreeItem | undefined | null | void> = this._onDidChangeTreeData.event;
 
-  constructor(private readonly globalConfigService: GlobalConfigService) {}
+  constructor(private readonly configService: GlobalConfigService) {
+    // Listen for config changes
+    this.configService.onConfigChange(() => this.refresh());
+  }
 
   refresh(): void {
     this._onDidChangeTreeData.fire();
   }
 
-  getTreeItem(element: ConfigTreeItem): vscode.TreeItem {
+  getTreeItem(element: vscode.TreeItem): vscode.TreeItem {
     return element;
   }
 
-  async getChildren(element?: ConfigTreeItem): Promise<ConfigTreeItem[]> {
-    const config = this.globalConfigService.getConfig();
-
+  async getChildren(element?: vscode.TreeItem): Promise<vscode.TreeItem[]> {
     if (!element) {
-      return [
-        new ConfigTreeItem('General', vscode.TreeItemCollapsibleState.Expanded, undefined, 'category'),
-        new ConfigTreeItem('Project Types', vscode.TreeItemCollapsibleState.Expanded, undefined, 'category'),
-        new ConfigTreeItem('Extensions', vscode.TreeItemCollapsibleState.Expanded, undefined, 'category'),
-        new ConfigTreeItem('Blacklist', vscode.TreeItemCollapsibleState.Expanded, undefined, 'category')
-      ];
+      return this.getRootItems();
     }
+
+    const config = this.configService.getConfig();
 
     if (element.label === 'General') {
-      return [
-        new ConfigTreeItem(
-          `Include Global Extensions: ${config.includeGlobalExtensions ? 'Enabled' : 'Disabled'}`,
-          vscode.TreeItemCollapsibleState.None,
-          'toggleIncludeGlobalExtensions',
-          'general-includeGlobalExtensions'
-        ),
-        new ConfigTreeItem(
-          `Filter Using Gitignore: ${config.filterUsingGitignore ? 'Enabled' : 'Disabled'}`,
-          vscode.TreeItemCollapsibleState.None,
-          'toggleFilterUsingGitignore',
-          'general-filterUsingGitignore'
-        ),
-        new ConfigTreeItem(
-          'Reset Configuration',
-          vscode.TreeItemCollapsibleState.None,
-          'resetConfig',
-          'general-resetConfig'
-        )
-      ];
+      return this.getGeneralItems();
     }
-
-    if (element.label === 'Project Types') {
-      const items = config.projectTypes.map(pt =>
-        new ConfigTreeItem(pt, vscode.TreeItemCollapsibleState.None, 'deleteProjectType', 'projectType', 'Project Types')
-      );
-      items.push(
-        new ConfigTreeItem('Add Project Type', vscode.TreeItemCollapsibleState.None, 'addProjectType', 'add-project-type')
-      );
-      return items;
+    else if (element.label === 'Project Types') {
+      return this.getProjectTypeItems();
     }
-
-    if (element.label === 'Extensions') {
-      return [
-        new ConfigTreeItem('Global Extensions', vscode.TreeItemCollapsibleState.Expanded, undefined, 'extensions-global-list'),
-        new ConfigTreeItem('Custom Extensions', vscode.TreeItemCollapsibleState.Expanded, undefined, 'extensions-custom-list')
-      ];
+    else if (element.label === 'Extensions') {
+      return this.getExtensionItems();
     }
-
-    if (element.label === 'Global Extensions') {
-      const items = config.globalExtensions.map(ext =>
-        new ConfigTreeItem(ext, vscode.TreeItemCollapsibleState.None, 'deleteGlobalExtension', 'extensions-global', 'Global Extensions')
-      );
-      items.push(
-        new ConfigTreeItem('Add Global Extension', vscode.TreeItemCollapsibleState.None, 'addGlobalExtension', 'add-global-extension')
-      );
-      return items;
+    else if (element.label === 'Blacklist') {
+      return this.getBlacklistItems();
     }
-
-    if (element.label === 'Custom Extensions') {
-      return config.projectTypes.map(pt =>
-        new ConfigTreeItem(pt, vscode.TreeItemCollapsibleState.Expanded, undefined, 'extensions-project-list', 'Custom Extensions')
-      );
+    else if (element.label === 'Global Extensions') {
+      return this.getGlobalExtensionItems();
     }
-
-    if (element.label === 'Blacklist') {
-      return [
-        new ConfigTreeItem('Global Blacklist', vscode.TreeItemCollapsibleState.Expanded, undefined, 'blacklist-global-list'),
-        new ConfigTreeItem('Custom Blacklist', vscode.TreeItemCollapsibleState.Expanded, undefined, 'blacklist-custom-list')
-      ];
+    else if (element.label === 'Global Blacklist') {
+      return this.getGlobalBlacklistItems();
     }
-
-    if (element.label === 'Global Blacklist') {
-      const items = config.globalBlacklist.map(item =>
-        new ConfigTreeItem(item, vscode.TreeItemCollapsibleState.None, 'deleteGlobalBlacklist', 'blacklist-global', 'Global Blacklist')
-      );
-      items.push(
-        new ConfigTreeItem('Add Global Blacklist Item', vscode.TreeItemCollapsibleState.None, 'addGlobalBlacklist', 'add-global-blacklist')
-      );
-      return items;
+    else if (element.contextValue === 'projectType') {
+      return this.getProjectTypeChildren(element.label as string);
     }
-
-    if (element.label === 'Custom Blacklist') {
-      return config.projectTypes.map(pt =>
-        new ConfigTreeItem(pt, vscode.TreeItemCollapsibleState.Collapsed, undefined, 'blacklist-project-list', 'Custom Blacklist')
-      );
+    else if (element.contextValue?.startsWith('project-extensions:')) {
+      const projectType = element.contextValue.split(':')[1];
+      return this.getCustomExtensionItems(projectType);
     }
-
-    if (config.projectTypes.includes(element.label)) {
-      if (element.contextValue === 'extensions-project-list') {
-        const extensions = config.customExtensions[element.label] || [];
-        if (extensions.length === 0) {
-          return [
-            new ConfigTreeItem('Add Extension', vscode.TreeItemCollapsibleState.None, 'addCustomExtension', `add-project-extension:${element.label}`, element.label)
-          ];
-        }
-        const items = extensions.map(ext =>
-          new ConfigTreeItem(ext, vscode.TreeItemCollapsibleState.None, 'deleteCustomExtension', `extensions-project:${element.label}:${ext}`, element.label)
-        );
-        items.push(
-          new ConfigTreeItem('Add Extension', vscode.TreeItemCollapsibleState.None, 'addCustomExtension', `add-project-extension:${element.label}`, element.label)
-        );
-        return items;
-      }
-      if (element.contextValue === 'blacklist-project-list') {
-        const extensions = config.customBlacklist[element.label] || [];
-        if (extensions.length === 0) {
-          return [
-            new ConfigTreeItem('Add Blacklist Item', vscode.TreeItemCollapsibleState.None, 'addCustomBlacklist', `add-project-blacklist:${element.label}`, element.label)
-          ];
-        }
-        const items = extensions.map(ext =>
-          new ConfigTreeItem(ext, vscode.TreeItemCollapsibleState.None, 'deleteCustomBlacklist', `blacklist-project:${element.label}:${ext}`, element.label)
-        );
-        items.push(
-          new ConfigTreeItem('Add Blacklist Item', vscode.TreeItemCollapsibleState.None, 'addCustomBlacklist', `add-project-blacklist:${element.label}`, element.label)
-        );
-        return items;
-      }
-      // if (element.contextValue === 'blacklist-project-list') {
-      //   const items = (config.customBlacklist[element.label] || []).map(item =>
-      //     new ConfigTreeItem(item, vscode.TreeItemCollapsibleState.None, 'deleteCustomBlacklist', `blacklist-project:${element.label}:${item}`, element.label)
-      //   );
-      //   items.push(
-      //     new ConfigTreeItem('Add Blacklist Item', vscode.TreeItemCollapsibleState.None, 'addCustomBlacklist', `add-project-blacklist:${element.label}`, element.label)
-      //   );
-      //   return items;
-      // }
+    else if (element.contextValue?.startsWith('project-blacklist:')) {
+      const projectType = element.contextValue.split(':')[1];
+      return this.getCustomBlacklistItems(projectType);
+    }
+    else if (element.contextValue === 'extensions-custom') {
+      return this.getCustomExtensionsRoot();
+    }
+    else if (element.contextValue === 'blacklist-custom') {
+      return this.getCustomBlacklistRoot();
+    }
+    // Handle the case when contextValue is extensions-custom:node
+    else if (element.contextValue?.startsWith('extensions-custom:')) {
+      const projectType = element.contextValue.split(':')[1];
+      return this.getCustomExtensionItems(projectType);
+    }
+    // Handle the case when contextValue is blacklist-custom:node
+    else if (element.contextValue?.startsWith('blacklist-custom:')) {
+      const projectType = element.contextValue.split(':')[1];
+      return this.getCustomBlacklistItems(projectType);
     }
 
     return [];
+  }
+
+  private getRootItems(): vscode.TreeItem[] {
+    return [
+      new ConfigTreeItem('General', vscode.TreeItemCollapsibleState.Expanded),
+      new ConfigTreeItem('Project Types', vscode.TreeItemCollapsibleState.Expanded),
+      new ConfigTreeItem('Extensions', vscode.TreeItemCollapsibleState.Expanded),
+      new ConfigTreeItem('Blacklist', vscode.TreeItemCollapsibleState.Expanded)
+    ];
+  }
+
+  private getGeneralItems(): vscode.TreeItem[] {
+    const config = this.configService.getConfig();
+    return [
+      new ConfigTreeItem(
+        'Include Global Extensions',
+        vscode.TreeItemCollapsibleState.None,
+        'toggleIncludeGlobalExtensions',
+        'general-includeGlobalExtensions'
+      ),
+      new ConfigTreeItem(
+        'Filter Using Gitignore',
+        vscode.TreeItemCollapsibleState.None,
+        'toggleFilterUsingGitignore',
+        'general-filterUsingGitignore'
+      ),
+      new ConfigTreeItem(
+        'Reset Configuration',
+        vscode.TreeItemCollapsibleState.None,
+        'resetConfig',
+        'general-resetConfig'
+      )
+    ];
+  }
+
+  private getProjectTypeItems(): vscode.TreeItem[] {
+    const config = this.configService.getConfig();
+    const items = config.projectTypes.map(pt =>
+      new ConfigTreeItem(pt, vscode.TreeItemCollapsibleState.Expanded, 'deleteProjectType', 'projectType')
+    );
+    items.push(
+      new ConfigTreeItem('Add Project Type', vscode.TreeItemCollapsibleState.None, 'addProjectType', 'add-project-type')
+    );
+    return items;
+  }
+
+  private getExtensionItems(): vscode.TreeItem[] {
+    return [
+      new ConfigTreeItem('Global Extensions', vscode.TreeItemCollapsibleState.Expanded, undefined, 'extensions-global'),
+      new ConfigTreeItem('Custom Extensions', vscode.TreeItemCollapsibleState.Expanded, undefined, 'extensions-custom')
+    ];
+  }
+
+  private getBlacklistItems(): vscode.TreeItem[] {
+    return [
+      new ConfigTreeItem('Global Blacklist', vscode.TreeItemCollapsibleState.Expanded, undefined, 'blacklist-global'),
+      new ConfigTreeItem('Custom Blacklist', vscode.TreeItemCollapsibleState.Expanded, undefined, 'blacklist-custom')
+    ];
+  }
+
+  private getGlobalExtensionItems(): vscode.TreeItem[] {
+    const config = this.configService.getConfig();
+    const items = config.globalExtensions.map(ext =>
+      new ConfigTreeItem(ext, vscode.TreeItemCollapsibleState.None, 'deleteGlobalExtension', 'extensions-global')
+    );
+    items.push(
+      new ConfigTreeItem('Add Global Extension', vscode.TreeItemCollapsibleState.None, 'addGlobalExtension', 'add-global-extension')
+    );
+    return items;
+  }
+
+  private getGlobalBlacklistItems(): vscode.TreeItem[] {
+    const config = this.configService.getConfig();
+    const items = config.globalBlacklist.map(item =>
+      new ConfigTreeItem(item, vscode.TreeItemCollapsibleState.None, 'deleteGlobalBlacklist', 'blacklist-global')
+    );
+    items.push(
+      new ConfigTreeItem('Add Global Blacklist', vscode.TreeItemCollapsibleState.None, 'addGlobalBlacklist', 'add-global-blacklist')
+    );
+    return items;
+  }
+
+  private getProjectTypeChildren(projectType: string): vscode.TreeItem[] {
+    return [
+      new ConfigTreeItem('Extensions', vscode.TreeItemCollapsibleState.Expanded, undefined, `project-extensions:${projectType}`),
+      new ConfigTreeItem('Blacklist', vscode.TreeItemCollapsibleState.Expanded, undefined, `project-blacklist:${projectType}`)
+    ];
+  }
+
+  private getCustomExtensionItems(projectType: string): vscode.TreeItem[] {
+    const config = this.configService.getConfig();
+    const extensions = config.customExtensions[projectType] || [];
+    const items = extensions.map(ext =>
+      new ConfigTreeItem(ext, vscode.TreeItemCollapsibleState.None, 'deleteCustomExtension', `custom-extension:${projectType}:${ext}`)
+    );
+    items.push(
+      new ConfigTreeItem('Add Extension', vscode.TreeItemCollapsibleState.None, 'addCustomExtension', `add-project-extension:${projectType}`)
+    );
+    return items;
+  }
+
+  private getCustomBlacklistItems(projectType: string): vscode.TreeItem[] {
+    const config = this.configService.getConfig();
+    const blacklist = config.customBlacklist[projectType] || [];
+    const items = blacklist.map(item =>
+      new ConfigTreeItem(item, vscode.TreeItemCollapsibleState.None, 'deleteCustomBlacklist', `custom-blacklist:${projectType}:${item}`)
+    );
+    items.push(
+      new ConfigTreeItem('Add Blacklist Item', vscode.TreeItemCollapsibleState.None, 'addCustomBlacklist', `add-project-blacklist:${projectType}`)
+    );
+    return items;
+  }
+
+  private getCustomExtensionsRoot(): vscode.TreeItem[] {
+    const config = this.configService.getConfig();
+    return config.projectTypes.map(pt =>
+      new ConfigTreeItem(pt, vscode.TreeItemCollapsibleState.Expanded, undefined, `project-extensions:${pt}`)
+    );
+  }
+
+  private getCustomBlacklistRoot(): vscode.TreeItem[] {
+    const config = this.configService.getConfig();
+    return config.projectTypes.map(pt =>
+      new ConfigTreeItem(pt, vscode.TreeItemCollapsibleState.Expanded, undefined, `project-blacklist:${pt}`)
+    );
   }
 }

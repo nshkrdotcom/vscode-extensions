@@ -1,52 +1,51 @@
 import * as assert from 'assert';
-import * as fs from 'fs';
-import * as path from 'path';
 import * as sinon from 'sinon';
-import * as vscode from 'vscode';
 import { FileService, FileContent } from '../../../services/fileService';
+import { MockFileSystem } from '../mockFileSystem';
 import { Config } from '../../../models/config';
 
 suite('FileService Tests', () => {
   let fileService: FileService;
-  let sandbox: sinon.SinonSandbox;
-  let mockFs: {
-    existsSync: sinon.SinonStub;
-    readFileSync: sinon.SinonStub;
-    readdirSync: sinon.SinonStub;
-    statSync: sinon.SinonStub;
-  };
+  let fileSystem: MockFileSystem;
 
   setup(() => {
-    sandbox = sinon.createSandbox();
-    mockFs = {
-      existsSync: sandbox.stub(),
-      readFileSync: sandbox.stub(),
-      readdirSync: sandbox.stub(),
-      statSync: sandbox.stub(),
-    };
-    fileService = new FileService(mockFs as any);
+    fileSystem = new MockFileSystem();
+    fileService = new FileService(fileSystem);
   });
 
   teardown(() => {
-    sandbox.restore();
+    sinon.restore();
   });
 
-  test('should include global extensions when includeGlobalExtensions is true', () => {
+  test('should include global extensions when includeGlobalExtensions is true', async () => {
+    fileSystem.writeFileSync('/project/file.md', 'Markdown content', 'utf-8');
+    fileSystem.writeFileSync('/project/file.js', 'JS content', 'utf-8');
+    console.log('Test: include global extensions - files in MockFileSystem:', Object.keys(fileSystem['files']));
+    console.log('Test: include global extensions - directories in MockFileSystem:', fileSystem['directories']);
+
     const config: Config = {
       includeGlobalExtensions: true,
       filterUsingGitignore: false,
       projectTypes: ['node'],
-      globalExtensions: ['.md', '.js'],
-      customExtensions: { node: [] },
+      globalExtensions: ['.md'],
+      customExtensions: { node: ['.js'] },
       globalBlacklist: [],
-      customBlacklist: { node: [] },
+      customBlacklist: {}
     };
-    const extensions = fileService.getAllowedExtensions(config);
-    assert.ok(extensions.has('.md'), 'should include global .md extension');
-    assert.ok(extensions.has('.js'), 'should include global .js extension');
+    console.log('Test: include global extensions - config:', config);
+
+    const files = fileService.getFiles('/project', config);
+    console.log('Test: include global extensions - returned files:', files.map(f => f.path));
+
+    assert.strictEqual(files.length, 2, 'should include both .md and .js files');
+    assert.ok(files.some((f: FileContent) => f.path === 'file.md'), 'should include file.md');
+    assert.ok(files.some((f: FileContent) => f.path === 'file.js'), 'should include file.js');
   });
 
-  test('should exclude global extensions when includeGlobalExtensions is false', () => {
+  test('should exclude global extensions when includeGlobalExtensions is false', async () => {
+    fileSystem.writeFileSync('/project/file.md', 'Markdown content', 'utf-8');
+    fileSystem.writeFileSync('/project/file.js', 'JS content', 'utf-8');
+
     const config: Config = {
       includeGlobalExtensions: false,
       filterUsingGitignore: false,
@@ -54,88 +53,98 @@ suite('FileService Tests', () => {
       globalExtensions: ['.md'],
       customExtensions: { node: ['.js'] },
       globalBlacklist: [],
-      customBlacklist: { node: [] },
+      customBlacklist: { node: [] }
     };
-    const extensions = fileService.getAllowedExtensions(config);
-    assert.strictEqual(extensions.has('.md'), false, 'should not include global .md extension');
-    assert.ok(extensions.has('.js'), 'should include node .js extension');
+
+    const files = fileService.getFiles('/project', config);
+
+    assert.strictEqual(files.length, 1, 'should include only .js file');
+    assert.ok(files.some((f: FileContent) => f.path === 'file.js'), 'should include file.js');
+    assert.ok(!files.some((f: FileContent) => f.path === 'file.md'), 'should exclude file.md');
   });
 
-  test('should include global blacklist when filterUsingGitignore is true', () => {
-    const config: Config = {
-      includeGlobalExtensions: false,
-      filterUsingGitignore: true,
-      projectTypes: ['node'],
-      globalExtensions: [],
-      customExtensions: { node: [] },
-      globalBlacklist: ['*.min.js'],
-      customBlacklist: { node: ['node_modules'] },
-    };
-    const blacklist = fileService.getBlacklistedFiles(config);
-    assert.ok(blacklist.has('*.min.js'), 'should include global *.min.js pattern');
-    assert.ok(blacklist.has('node_modules'), 'should include node node_modules pattern');
-    assert.ok(blacklist.has('.git'), 'should include .git from gitignore');
-  });
+  test('should include global blacklist when filterUsingGitignore is true', async () => {
+    fileSystem.writeFileSync('/project/node_modules/file.js', 'JS content', 'utf-8');
+    fileSystem.writeFileSync('/project/src/file.js', 'JS content', 'utf-8');
 
-  test('should exclude files in blacklisted directories', () => {
     const config: Config = {
-      includeGlobalExtensions: false,
+      includeGlobalExtensions: true,
       filterUsingGitignore: true,
       projectTypes: ['node'],
-      globalExtensions: [],
+      globalExtensions: ['.js'],
       customExtensions: { node: ['.js'] },
-      globalBlacklist: [],
-      customBlacklist: { node: ['node_modules'] },
+      globalBlacklist: ['node_modules'],
+      customBlacklist: { node: [] }
     };
-    const extensions = fileService.getAllowedExtensions(config);
-    const blacklist = fileService.getBlacklistedFiles(config);
-    const result = fileService.shouldIncludeFile('script.js', 'node_modules/pkg/script.js', extensions, blacklist);
-    assert.strictEqual(result, false, 'should exclude files in node_modules');
+
+    const files = fileService.getFiles('/project', config);
+
+    assert.strictEqual(files.length, 1, 'should exclude node_modules');
+    assert.ok(files.some((f: FileContent) => f.path === 'src/file.js'), 'should include src/file.js');
+    assert.ok(!files.some((f: FileContent) => f.path.includes('node_modules')), 'should exclude node_modules/file.js');
   });
 
-  test('should include files with allowed extensions and not blacklisted', () => {
+  test('should exclude files in blacklisted directories', async () => {
+    fileSystem.writeFileSync('/project/dist/file.js', 'JS content', 'utf-8');
+    fileSystem.writeFileSync('/project/src/file.js', 'JS content', 'utf-8');
+
     const config: Config = {
-      includeGlobalExtensions: false,
+      includeGlobalExtensions: true,
       filterUsingGitignore: false,
       projectTypes: ['node'],
-      globalExtensions: [],
+      globalExtensions: ['.js'],
       customExtensions: { node: ['.js'] },
       globalBlacklist: [],
-      customBlacklist: { node: [] },
+      customBlacklist: { node: ['dist'] }
     };
-    const extensions = fileService.getAllowedExtensions(config);
-    const blacklist = fileService.getBlacklistedFiles(config);
-    const result = fileService.shouldIncludeFile('app.js', 'src/app.js', extensions, blacklist);
-    assert.strictEqual(result, true, 'should include .js files not in blacklist');
+
+    const files = fileService.getFiles('/project', config);
+
+    assert.strictEqual(files.length, 1, 'should exclude dist directory');
+    assert.ok(files.some((f: FileContent) => f.path === 'src/file.js'), 'should include src/file.js');
+    assert.ok(!files.some((f: FileContent) => f.path.includes('dist')), 'should exclude dist/file.js');
+  });
+
+  test('should include files with allowed extensions and not blacklisted', async () => {
+    fileSystem.writeFileSync('/project/file.js', 'JS content', 'utf-8');
+    fileSystem.writeFileSync('/project/file.exe', 'Binary content', 'utf-8');
+
+    const config: Config = {
+      includeGlobalExtensions: true,
+      filterUsingGitignore: false,
+      projectTypes: ['node'],
+      globalExtensions: ['.js'],
+      customExtensions: { node: ['.js'] },
+      globalBlacklist: [],
+      customBlacklist: { node: [] }
+    };
+
+    const files = fileService.getFiles('/project', config);
+
+    assert.strictEqual(files.length, 1, 'should include only .js file');
+    assert.ok(files.some((f: FileContent) => f.path === 'file.js'), 'should include file.js');
+    assert.ok(!files.some((f: FileContent) => f.path === 'file.exe'), 'should exclude file.exe');
   });
 
   test('should respect .gitignore when scanning files', async () => {
-    const workspaceFolder = {
-      uri: { fsPath: '/fake/workspace' },
-    } as vscode.WorkspaceFolder;
-    mockFs.existsSync.withArgs('/fake/workspace/.gitignore').returns(true);
-    mockFs.readFileSync.withArgs('/fake/workspace/.gitignore', 'utf-8').returns('ignored.txt\nnode_modules/*');
-    mockFs.readFileSync.withArgs('/fake/workspace/app.js', 'utf-8').returns('console.log("test");');
-    sandbox.stub(vscode.workspace, 'findFiles').resolves([
-      { fsPath: '/fake/workspace/app.js', path: '/fake/workspace/app.js' } as vscode.Uri,
-    ]);
-    sandbox.stub(vscode.workspace, 'asRelativePath').callsFake((uri: vscode.Uri | string) => {
-      if (typeof uri === 'string') {
-        return uri.replace('/fake/workspace/', '');
-      }
-      return uri.fsPath.replace('/fake/workspace/', '');
-    });
+    fileSystem.writeFileSync('/project/.gitignore', 'node_modules\n', 'utf-8');
+    fileSystem.writeFileSync('/project/node_modules/file.js', 'JS content', 'utf-8');
+    fileSystem.writeFileSync('/project/src/file.js', 'JS content', 'utf-8');
+
     const config: Config = {
-      includeGlobalExtensions: false,
+      includeGlobalExtensions: true,
       filterUsingGitignore: true,
       projectTypes: ['node'],
-      globalExtensions: [],
+      globalExtensions: ['.js'],
       customExtensions: { node: ['.js'] },
       globalBlacklist: [],
-      customBlacklist: { node: [] },
+      customBlacklist: { node: [] }
     };
-    const result = await fileService.scanWorkspaceFiles(config, '/fake/workspace');
-    assert.strictEqual(result.length, 1, 'should include only non-ignored files');
-    assert.strictEqual(result[0].path, 'app.js', 'should include app.js');
+
+    const files = fileService.getFiles('/project', config);
+
+    assert.strictEqual(files.length, 1, 'should respect .gitignore');
+    assert.ok(files.some((f: FileContent) => f.path === 'src/file.js'), 'should include src/file.js');
+    assert.ok(!files.some((f: FileContent) => f.path.includes('node_modules')), 'should exclude node_modules/file.js');
   });
 });

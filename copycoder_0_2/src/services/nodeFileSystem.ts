@@ -1,29 +1,36 @@
 import * as fs from 'fs';
-import * as path from 'path';
-
-// Import the FileSystem interface from the correct file
 import { FileSystem } from './fileSystem';
 
 export class NodeFileSystem implements FileSystem {
-  private configPath: string;
-
-  constructor() {
-    this.configPath = path.join(process.env.HOME || '', '.copycoder', 'config.json');
+  existsSync(path: string): boolean {
+    return fs.existsSync(path);
   }
 
-  existsSync(filePath: string): boolean {
-    return fs.existsSync(filePath);
+  mkdirSync(path: string, options?: { recursive: boolean }): void {
+    fs.mkdirSync(path, options);
   }
 
-  readFileSync(filePath: string, encoding: string): string {
-    return fs.readFileSync(filePath, encoding as BufferEncoding).toString();
+  readFileSync(path: string, encoding: string): string {
+    return fs.readFileSync(path, { encoding: encoding as BufferEncoding }).toString();
   }
 
-  writeFileSync(filePath: string, data: string, encoding: string): void {
-    fs.writeFileSync(filePath, data, encoding as BufferEncoding);
+  writeFileSync(path: string, data: string, encoding: string): void {
+    fs.writeFileSync(path, data, { encoding: encoding as BufferEncoding });
   }
 
-  mkdirSync(dirPath: string, options: { recursive: boolean }): void {
-    fs.mkdirSync(dirPath, options);
+  unlinkSync(path: string): void {
+    fs.unlinkSync(path);
+  }
+
+  readdirSync(path: string): string[] {
+    return fs.readdirSync(path);
+  }
+
+  isDirectory(path: string): boolean {
+    try {
+      return fs.statSync(path).isDirectory();
+    } catch (error) {
+      return false; // Return false if the path doesn't exist or is inaccessible
+    }
   }
 }

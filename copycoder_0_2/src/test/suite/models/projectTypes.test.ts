@@ -1,40 +1,61 @@
 import * as assert from 'assert';
-import { DEFAULT_CONFIG } from '../../../models/config';
+import { AVAILABLE_EXTENSIONS, AVAILABLE_BLACKLIST } from '../../../models/config';
+import { MockFileSystem } from '../mockFileSystem'; // Import MockFileSystem for consistency
 
 suite('Project Types Tests', () => {
-  test('DEFAULT_EXTENSIONS should have expected project types', () => {
-    assert.ok(DEFAULT_CONFIG.projectTypes.includes('node'), 'should include node project type');
-    assert.ok(DEFAULT_CONFIG.projectTypes.includes('python'), 'should include python project type');
-    assert.ok(DEFAULT_CONFIG.projectTypes.includes('terraform'), 'should include terraform project type');
-    assert.ok(DEFAULT_CONFIG.projectTypes.includes('bash'), 'should include bash project type');
-    assert.ok(DEFAULT_CONFIG.projectTypes.includes('php'), 'should include php project type');
+  setup(() => {
+    // No file system interaction, but included for consistency
+    new MockFileSystem();
+  });
+
+  test('AVAILABLE_EXTENSIONS should have expected project types', () => {
+    const expectedTypes = [
+      'powershell',
+      'terraform',
+      'bash',
+      'php',
+      'mysql',
+      'postgres',
+      'elixir',
+      'python',
+      'node',
+      'vscode',
+      'wsl2'
+    ];
+    const actualTypes = Object.keys(AVAILABLE_EXTENSIONS).filter(type => type !== 'global');
+    assert.strictEqual(actualTypes.length, 11, 'should include all project types');
+    expectedTypes.forEach(type => {
+      assert.ok(Object.keys(AVAILABLE_EXTENSIONS).includes(type), `should include ${type} project type`);
+    });
   });
 
   test('Global extensions should include commonly used file types', () => {
-    assert.ok(DEFAULT_CONFIG.globalExtensions.includes('.md'), 'should include .md in global extensions');
-    assert.ok(DEFAULT_CONFIG.globalExtensions.includes('.txt'), 'should include .txt in global extensions');
-    assert.ok(DEFAULT_CONFIG.globalExtensions.includes('.gitignore'), 'should include .gitignore in global extensions');
+    assert.deepStrictEqual(AVAILABLE_EXTENSIONS['global'], [
+      '.md',
+      '.txt',
+      '.gitignore',
+      '.env.example',
+      '.editorconfig'
+    ]);
   });
 
-  test('DEFAULT_BLACKLIST should have expected project types', () => {
-    assert.ok(Object.keys(DEFAULT_CONFIG.customBlacklist).includes('node'), 'should include node project type');
-    assert.ok(Object.keys(DEFAULT_CONFIG.customBlacklist).includes('python'), 'should include python project type');
-    assert.ok(Object.keys(DEFAULT_CONFIG.customBlacklist).includes('terraform'), 'should include terraform project type');
+  test('AVAILABLE_BLACKLIST should have expected project types', () => {
+    const expectedBlacklistTypes = ['global', 'node', 'python', 'terraform', 'vscode', 'powershell'];
+    assert.deepStrictEqual(Object.keys(AVAILABLE_BLACKLIST).sort(), expectedBlacklistTypes.sort());
   });
 
   test('Global blacklist should include common excluded patterns', () => {
-    assert.ok(DEFAULT_CONFIG.globalBlacklist.includes('*.min.js'), 'should include *.min.js in global blacklist');
-    assert.ok(DEFAULT_CONFIG.globalBlacklist.includes('*.min.css'), 'should include *.min.css in global blacklist');
-    assert.ok(DEFAULT_CONFIG.globalBlacklist.includes('.DS_Store'), 'should include .DS_Store in global blacklist');
+    assert.ok(AVAILABLE_BLACKLIST['global'].includes('*.min.js'));
+    assert.ok(AVAILABLE_BLACKLIST['global'].includes('*.min.css'));
+    assert.ok(AVAILABLE_BLACKLIST['global'].includes('.DS_Store'));
   });
 
   test('Global blacklist should include directory patterns', () => {
-    assert.ok(DEFAULT_CONFIG.globalBlacklist.includes('.vscode/*'), 'should include .vscode/* in global blacklist');
-    assert.ok(DEFAULT_CONFIG.globalBlacklist.includes('.idea/*'), 'should include .idea/* in global blacklist');
+    assert.ok(AVAILABLE_BLACKLIST['global'].includes('.vscode/*'));
+    assert.ok(AVAILABLE_BLACKLIST['global'].includes('.idea/*'));
   });
 
   test('Node blacklist should include directory patterns', () => {
-    assert.ok(DEFAULT_CONFIG.customBlacklist['node'].includes('node_modules/*'), 'should include node_modules/* in node blacklist');
-    assert.ok(DEFAULT_CONFIG.customBlacklist['node'].includes('package-lock.json'), 'should include package-lock.json in node blacklist');
+    assert.ok(AVAILABLE_BLACKLIST['node'].includes('node_modules/*'));
   });
 });

@@ -18,7 +18,7 @@
         {
           "id": "copycoder-sidebar",
           "title": "CopyCoder",
-          "icon":  "$(clippy)"
+          "icon": "$(clippy)"
         }
       ]
     },
@@ -26,7 +26,7 @@
       "copycoder-sidebar": [
         {
           "id": "copycoderConfig",
-          "name": "Configuration"
+          "name": "Config"
         }
       ]
     },
@@ -37,40 +37,50 @@
       },
       {
         "command": "copycoder.configTreeItemClicked",
-        "title": "CopyCoder: Handle Config Item"
+        "title": "CopyCoder: Config Tree Item Clicked"
       },
       {
-        "command": "copycoder.copyFiles",
-        "title": "CopyCoder: Copy Files to Clipboard"
+        "command": "copycoder.copyAllOpenFiles",
+        "title": "Copy Open Files"
+      },
+      {
+        "command": "copycoder.copyAllProjectFiles",
+        "title": "Copy All Files"
       },
       {
         "command": "copycoder.parseClipboard",
-        "title": "CopyCoder: Parse Clipboard Content"
+        "title": "CopyCoder: Parse Clipboard"
       }
     ],
     "menus": {
-      "view/item/context": [
+      "view/title": [
         {
-          "command": "copycoder.configTreeItemClicked",
-          "when": "view == copycoderConfig"
+          "command": "copycoder.copyAllOpenFiles",
+          "when": "view == copycoderConfig",
+          "group": "navigation",
+          "title": "Copy Open Files",
+          "icon": "$(files-alt)"
+        },
+        {
+          "command": "copycoder.copyAllProjectFiles",
+          "when": "view == copycoderConfig",
+          "group": "navigation",
+          "title": "Copy All Files",
+          "icon": "$(copy)"
         }
       ],
       "commandPalette": [
         {
-          "command": "copycoder.helloWorld",
-          "when": "true"
-        },
-        {
-          "command": "copycoder.copyFiles",
-          "when": "true"
-        },
-        {
-          "command": "copycoder.parseClipboard",
-          "when": "true"
-        },
-        {
           "command": "copycoder.configTreeItemClicked",
           "when": "false"
+        },
+        {
+          "command": "copycoder.copyAllOpenFiles",
+          "when": "editorHasDocument"
+        },
+        {
+          "command": "copycoder.copyAllProjectFiles",
+          "when": "workspaceFolderCount > 0"
         }
       ]
     }
@@ -87,7 +97,8 @@
     "pretest": "npm run compile-tests && npm run compile && npm run lint",
     "check-types": "tsc --noEmit",
     "lint": "eslint src",
-    "test": "vscode-test"
+    "test": "vscode-test --config .vscode-test.mjs",
+    "debug-compile-tests": "tsc -p . --outDir out --listFiles"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",
@@ -98,13 +109,14 @@
     "@typescript-eslint/parser": "^8.32.1",
     "@vscode/test-cli": "^0.0.10",
     "@vscode/test-electron": "^2.5.2",
+    "chai": "^5.2.0",
     "esbuild": "^0.25.4",
     "eslint": "^9.26.0",
     "glob": "^11.0.2",
     "mocha": "^11.2.2",
     "npm-run-all": "^4.1.5",
     "sinon": "^20.0.0",
-    "typescript": "^5.8.3",
-    "ts-node": "^10.9.2"
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
   }
 }

@@ -5,7 +5,7 @@ import { CopyCommandHandler } from '../../../handlers/copyCommandHandler';
 import { GlobalConfigService } from '../../../services/globalConfigService';
 import { FileService } from '../../../services/fileService';
 import { ClipboardService } from '../../../services/clipboardService';
-import { NodeFileSystem } from '../../../services/nodeFileSystem';
+import { MockFileSystem } from '../mockFileSystem'; // Import MockFileSystem
 import { Config } from '../../../models/config';
 
 suite('CopyCommandHandler Tests', () => {
@@ -15,7 +15,7 @@ suite('CopyCommandHandler Tests', () => {
   let handler: CopyCommandHandler;
 
   setup(() => {
-    const fileSystem = new NodeFileSystem();
+    const fileSystem = new MockFileSystem(); // Use MockFileSystem
     configService = new GlobalConfigService(fileSystem);
     fileService = new FileService(fileSystem);
     clipboardService = new ClipboardService();

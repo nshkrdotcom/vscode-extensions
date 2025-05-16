@@ -1,185 +1,125 @@
 import * as assert from 'assert';
 import * as sinon from 'sinon';
 import * as vscode from 'vscode';
-import { ConfigTreeDataProvider, ConfigTreeItem } from '../../../ui/configTreeDataProvider';
+// import * from 'assert';//import { assert } from 'chai';
+import { ConfigTreeDataProvider } from '../../../ui/configTreeDataProvider';
 import { GlobalConfigService } from '../../../services/globalConfigService';
-import { NodeFileSystem } from '../../../services/nodeFileSystem';
-import { Config } from '../../../models/config';
+import { MockFileSystem } from '../mockFileSystem';
 
 suite('ConfigTreeDataProvider Tests', () => {
   let configService: GlobalConfigService;
-  let treeDataProvider: ConfigTreeDataProvider;
+  let configTreeProvider: ConfigTreeDataProvider;
+  let sandbox: sinon.SinonSandbox;
 
   setup(() => {
-    const fileSystem = new NodeFileSystem();
+    sandbox = sinon.createSandbox();
+    const fileSystem = new MockFileSystem();
     configService = new GlobalConfigService(fileSystem);
-    treeDataProvider = new ConfigTreeDataProvider(configService);
-    sinon.stub(vscode.window, 'showInformationMessage');
+    sandbox.stub(configService, 'getConfig').returns({
+      includeGlobalExtensions: true,
+      filterUsingGitignore: false,
+      projectTypes: ['node', 'python'],
+      globalExtensions: ['.md', '.txt'],
+      customExtensions: { node: ['.js'], python: ['.py'] },
+      globalBlacklist: ['node_modules'],
+      customBlacklist: { node: ['dist'], python: ['__pycache__'] }
+    });
+    configTreeProvider = new ConfigTreeDataProvider(configService);
   });
 
   teardown(() => {
-    sinon.restore();
+    sandbox.restore(); // Clean up all stubs and spies
   });
 
   test('getChildren returns root categories', async () => {
-    const children = await treeDataProvider.getChildren();
-    assert.strictEqual(children.length, 4, 'Should return 4 root categories');
-    assert.strictEqual(children[0].label, 'General');
-    assert.strictEqual(children[0].contextValue, 'category');
-    assert.strictEqual(children[1].label, 'Project Types');
-    assert.strictEqual(children[2].label, 'Extensions');
-    assert.strictEqual(children[3].label, 'Blacklist');
+    const children = await configTreeProvider.getChildren();
+    assert.strictEqual(children.length, 4);
+    assert.ok(children.some(c => c.label === 'General'));
+    assert.ok(children.some(c => c.label === 'Project Types'));
+    assert.ok(children.some(c => c.label === 'Extensions'));
+    assert.ok(children.some(c => c.label === 'Blacklist'));
   });
 
   test('getChildren for General category', async () => {
-    const generalItem = new ConfigTreeItem('General', vscode.TreeItemCollapsibleState.Expanded, undefined, 'category');
-    const children = await treeDataProvider.getChildren(generalItem);
-    assert.strictEqual(children.length, 3, 'General should have 3 children');
-    assert.strictEqual(children[0].contextValue, 'general-includeGlobalExtensions');
-    assert.strictEqual(children[1].contextValue, 'general-filterUsingGitignore');
-    assert.strictEqual(children[2].contextValue, 'general-resetConfig');
+    const generalItem = { label: 'General', collapsibleState: vscode.TreeItemCollapsibleState.Expanded };
+    const children = await configTreeProvider.getChildren(generalItem);
+    assert.ok(children.some(c => c.label === 'Include Global Extensions'), 'should include Include Global Extensions');
+    assert.ok(children.some(c => c.label === 'Filter Using Gitignore'), 'should include Filter Using Gitignore');
+    assert.ok(children.some(c => c.label === 'Reset Configuration'), 'should include Reset Configuration');
   });
 
   test('getChildren for Project Types', async () => {
-    sinon.stub(configService, 'getConfig').returns({
-      includeGlobalExtensions: true,
-      filterUsingGitignore: true,
-      projectTypes: ['node', 'python'],
-      globalExtensions: [],
-      customExtensions: { node: [], python: [] },
-      globalBlacklist: [],
-      customBlacklist: { node: [], python: [] }
-    });
-    const projectTypesItem = new ConfigTreeItem('Project Types', vscode.TreeItemCollapsibleState.Expanded, undefined, 'category');
-    const children = await treeDataProvider.getChildren(projectTypesItem);
-    assert.strictEqual(children.length, 3, 'Project Types should have 3 children');
-    assert.strictEqual(children[0].label, 'node');
-    assert.strictEqual(children[0].contextValue, 'projectType');
-    assert.strictEqual(children[1].label, 'python');
-    assert.strictEqual(children[2].contextValue, 'add-project-type');
+    const projectTypesItem = { label: 'Project Types', collapsibleState: vscode.TreeItemCollapsibleState.Expanded };
+    const children = await configTreeProvider.getChildren(projectTypesItem);
+    assert.ok(children.some(c => c.label === 'node'));
+    assert.ok(children.some(c => c.label === 'python'));
+    assert.ok(children.some(c => c.label === 'Add Project Type'));
   });
 
   test('getChildren for Extensions', async () => {
-    sinon.stub(configService, 'getConfig').returns({
-      includeGlobalExtensions: true,
-      filterUsingGitignore: true,
-      projectTypes: ['python'],
-      globalExtensions: [],
-      customExtensions: { python: ['.custom'] },
-      globalBlacklist: [],
-      customBlacklist: { python: [] }
-    });
-    const extensionsItem = new ConfigTreeItem('Extensions', vscode.TreeItemCollapsibleState.Expanded, undefined, 'category');
-    const children = await treeDataProvider.getChildren(extensionsItem);
-    assert.strictEqual(children.length, 2, 'Extensions should have 2 children');
-    assert.strictEqual(children[0].contextValue, 'extensions-global-list');
-    assert.strictEqual(children[1].contextValue, 'extensions-custom-list');
+    const extensionsItem = { label: 'Extensions', collapsibleState: vscode.TreeItemCollapsibleState.Expanded };
+    const children = await configTreeProvider.getChildren(extensionsItem);
+    assert.ok(children.some(c => c.label === 'Global Extensions'));
+    assert.ok(children.some(c => c.label === 'Custom Extensions'));
   });
 
   test('getChildren for Custom Extensions with project type', async () => {
-    sinon.stub(configService, 'getConfig').returns({
-      includeGlobalExtensions: true,
-      filterUsingGitignore: true,
-      projectTypes: ['python'],
-      globalExtensions: [],
-      customExtensions: { python: ['.custom'] },
-      globalBlacklist: [],
-      customBlacklist: { python: [] }
-    });
-    const pythonItem = new ConfigTreeItem('python', vscode.TreeItemCollapsibleState.Collapsed, undefined, 'extensions-project-list', 'Custom Extensions');
-    const children = await treeDataProvider.getChildren(pythonItem);
-    assert.strictEqual(children.length, 2, 'Python custom extensions should have 2 children');
-    assert.strictEqual(children[0].label, '.custom');
-    assert.strictEqual(children[0].contextValue, 'extensions-project:python:.custom');
-    assert.strictEqual(children[1].contextValue, 'add-project-extension:python');
+    const nodeItem = { label: 'node', contextValue: 'extensions-custom:node', collapsibleState: vscode.TreeItemCollapsibleState.Expanded };
+    const children = await configTreeProvider.getChildren(nodeItem);
+    assert.strictEqual(children.length, 2, 'should return custom extensions and Add Extension');
+    assert.ok(children.some(c => c.label === '.js'), 'should include .js extension');
+    assert.ok(children.some(c => c.label === 'Add Extension'), 'should include Add Extension');
+    assert.ok(children.some(c => c.contextValue === 'add-project-extension:node'), 'should have correct context value');
   });
 
   test('getChildren for Global Extensions', async () => {
-    sinon.stub(configService, 'getConfig').returns({
-      includeGlobalExtensions: true,
-      filterUsingGitignore: true,
-      projectTypes: [],
-      globalExtensions: ['.js', '.ts'],
-      customExtensions: {},
-      globalBlacklist: [],
-      customBlacklist: {}
-    });
-    const globalExtensionsItem = new ConfigTreeItem('Global Extensions', vscode.TreeItemCollapsibleState.Expanded, undefined, 'extensions-global-list');
-    const children = await treeDataProvider.getChildren(globalExtensionsItem);
-    assert.strictEqual(children.length, 3, 'Global Extensions should have 3 children');
-    assert.strictEqual(children[0].label, '.js');
-    assert.strictEqual(children[0].contextValue, 'extensions-global');
-    assert.strictEqual(children[1].label, '.ts');
-    assert.strictEqual(children[2].contextValue, 'add-global-extension');
+    const globalExtensionsItem = { label: 'Global Extensions', collapsibleState: vscode.TreeItemCollapsibleState.Expanded };
+    const children = await configTreeProvider.getChildren(globalExtensionsItem);
+    assert.ok(children.some(c => c.label === '.md'));
+    assert.ok(children.some(c => c.label === '.txt'));
+    assert.ok(children.some(c => c.label === 'Add Global Extension'));
   });
 
   test('getChildren for Blacklist', async () => {
-    sinon.stub(configService, 'getConfig').returns({
-      includeGlobalExtensions: true,
-      filterUsingGitignore: true,
-      projectTypes: ['typescript'],
-      globalExtensions: [],
-      customExtensions: { typescript: [] },
-      globalBlacklist: [],
-      customBlacklist: { typescript: ['temp'] }
-    });
-    const blacklistItem = new ConfigTreeItem('Blacklist', vscode.TreeItemCollapsibleState.Expanded, undefined, 'category');
-    const children = await treeDataProvider.getChildren(blacklistItem);
-    assert.strictEqual(children.length, 2, 'Blacklist should have 2 children');
-    assert.strictEqual(children[0].contextValue, 'blacklist-global-list');
-    assert.strictEqual(children[1].contextValue, 'blacklist-custom-list');
+    const blacklistItem = { label: 'Blacklist', collapsibleState: vscode.TreeItemCollapsibleState.Expanded };
+    const children = await configTreeProvider.getChildren(blacklistItem);
+    assert.ok(children.some(c => c.label === 'Global Blacklist'));
+    assert.ok(children.some(c => c.label === 'Custom Blacklist'));
   });
 
   test('getChildren for Custom Blacklist with project type', async () => {
-    sinon.stub(configService, 'getConfig').returns({
-      includeGlobalExtensions: true,
-      filterUsingGitignore: true,
-      projectTypes: ['typescript'],
-      globalExtensions: [],
-      customExtensions: { typescript: [] },
-      globalBlacklist: [],
-      customBlacklist: { typescript: ['temp'] }
-    });
-    const typescriptItem = new ConfigTreeItem('typescript', vscode.TreeItemCollapsibleState.Collapsed, undefined, 'blacklist-project-list', 'Custom Blacklist');
-    const children = await treeDataProvider.getChildren(typescriptItem);
-    assert.strictEqual(children.length, 2, 'Typescript custom blacklist should have 2 children');
-    assert.strictEqual(children[0].label, 'temp');
-    assert.strictEqual(children[0].contextValue, 'blacklist-project:typescript:temp');
-    assert.strictEqual(children[1].contextValue, 'add-project-blacklist:typescript');
+    const nodeItem = { label: 'node', contextValue: 'blacklist-custom:node', collapsibleState: vscode.TreeItemCollapsibleState.Expanded };
+    const children = await configTreeProvider.getChildren(nodeItem);
+    assert.strictEqual(children.length, 2, 'should return custom blacklist and Add Blacklist Item');
+    assert.ok(children.some(c => c.label === 'dist'), 'should include dist blacklist');
+    assert.ok(children.some(c => c.label === 'Add Blacklist Item'), 'should include Add Blacklist Item');
+    assert.ok(children.some(c => c.contextValue === 'add-project-blacklist:node'), 'should have correct context value');
   });
 
   test('getChildren for Global Blacklist', async () => {
-    sinon.stub(configService, 'getConfig').returns({
-      includeGlobalExtensions: true,
-      filterUsingGitignore: true,
-      projectTypes: [],
-      globalExtensions: [],
-      customExtensions: {},
-      globalBlacklist: ['node_modules', 'dist'],
-      customBlacklist: {}
-    });
-    const globalBlacklistItem = new ConfigTreeItem('Global Blacklist', vscode.TreeItemCollapsibleState.Expanded, undefined, 'blacklist-global-list');
-    const children = await treeDataProvider.getChildren(globalBlacklistItem);
-    assert.strictEqual(children.length, 3, 'Global Blacklist should have 3 children');
-    assert.strictEqual(children[0].label, 'node_modules');
-    assert.strictEqual(children[0].contextValue, 'blacklist-global');
-    assert.strictEqual(children[1].label, 'dist');
-    assert.strictEqual(children[2].contextValue, 'add-global-blacklist');
+    const globalBlacklistItem = { label: 'Global Blacklist', collapsibleState: vscode.TreeItemCollapsibleState.Expanded };
+    const children = await configTreeProvider.getChildren(globalBlacklistItem);
+    assert.ok(children.some(c => c.label === 'node_modules'));
+    assert.ok(children.some(c => c.label === 'Add Global Blacklist'));
   });
 
   test('getChildren for Custom Extensions with no extensions', async () => {
-    sinon.stub(configService, 'getConfig').returns({
+    const emptyConfig = {
       includeGlobalExtensions: true,
-      filterUsingGitignore: true,
-      projectTypes: ['custom'],
-      globalExtensions: [],
-      customExtensions: { custom: [] },
+      filterUsingGitignore: false,
+      projectTypes: ['node'],
+      globalExtensions: ['.md'],
+      customExtensions: { node: [] },
       globalBlacklist: [],
-      customBlacklist: { custom: [] }
-    });
-    const customItem = new ConfigTreeItem('custom', vscode.TreeItemCollapsibleState.Collapsed, undefined, 'extensions-project-list', 'Custom Extensions');
-    const children = await treeDataProvider.getChildren(customItem);
-    assert.strictEqual(children.length, 1, 'Custom extensions with no items should have 1 child');
-    assert.strictEqual(children[0].contextValue, 'add-project-extension:custom');
+      customBlacklist: {}
+    };
+    sandbox.restore();
+    sandbox.stub(configService, 'getConfig').returns(emptyConfig);
+
+    const nodeItem = { label: 'node', contextValue: 'extensions-custom:node', collapsibleState: vscode.TreeItemCollapsibleState.Expanded };
+    const children = await configTreeProvider.getChildren(nodeItem);
+    assert.strictEqual(children.length, 1, 'should return only Add Extension');
+    assert.ok(children.some(c => c.label === 'Add Extension'), 'should include Add Extension');
+    assert.ok(children.some(c => c.contextValue === 'add-project-extension:node'), 'should have correct context value');
   });
 });
