@@ -13,21 +13,51 @@ export class CopyCommandHandler {
 
   async copyFiles(): Promise<void> {
     try {
+      console.log("CopyCommandHandler.copyFiles - Starting to copy all project files");
+      
       if (!vscode.workspace.workspaceFolders) {
+        console.log("CopyCommandHandler.copyFiles - No workspace folders found");
         MessageService.showInfo('No workspace open to copy files from.');
         return;
       }
+      
+      console.log(`CopyCommandHandler.copyFiles - Found ${vscode.workspace.workspaceFolders.length} workspace folders`);
       const config = this.globalConfigService.getConfig();
+      console.log("CopyCommandHandler.copyFiles - Config:", JSON.stringify({
+        includeGlobalExtensions: config.includeGlobalExtensions,
+        filterUsingGitignore: config.filterUsingGitignore,
+        projectTypes: config.projectTypes,
+        globalExtensions: config.globalExtensions,
+        customExtensions: config.customExtensions,
+        globalBlacklist: config.globalBlacklist,
+        customBlacklist: config.customBlacklist
+      }, null, 2));
+      
       const workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
+      console.log(`CopyCommandHandler.copyFiles - Using workspace root: ${workspaceRoot}`);
+      
+      console.log("CopyCommandHandler.copyFiles - About to scan workspace files");
       const files = await this.fileService.scanWorkspaceFiles(config, workspaceRoot);
+      console.log(`CopyCommandHandler.copyFiles - Scan complete, found ${files.length} files`);
+      
       if (files.length === 0) {
+        console.log("CopyCommandHandler.copyFiles - No files matched the current filters");
         MessageService.showInfo('No files matched the current filters.');
         return;
       }
+      
+      // Debug log for files found
+      files.forEach((file, i) => {
+        console.log(`CopyCommandHandler.copyFiles - File [${i}]: ${file.path}, content length: ${file.content.length}`);
+      });
+      
       const formatted = this.clipboardService.formatFilesForClipboard(files);
+      console.log(`CopyCommandHandler.copyFiles - Formatted output length: ${formatted.length}`);
+      
       await this.clipboardService.copyToClipboard(formatted);
       MessageService.showInfo(`Copied ${files.length} project files to clipboard.`);
     } catch (error) {
+      console.error(`Failed to copy project files: ${error}`);
       MessageService.showError(`Failed to copy project files: ${error}`);
     }
   }
