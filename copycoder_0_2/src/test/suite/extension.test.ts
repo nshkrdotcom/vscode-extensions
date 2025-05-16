@@ -1,93 +1,192 @@
-// src/test/suite/extension.test.ts
 import * as assert from 'assert';
 import * as vscode from 'vscode';
 import * as sinon from 'sinon';
+import { GlobalConfigService } from '../../services/globalConfigService';
+import { FileService } from '../../services/fileService';
 import { ClipboardService } from '../../services/clipboardService';
-import { FileService } from '../../services/fileService'; // Import FileService
-import { ConfigTreeItem } from '../../ui/configTreeDataProvider';
+import { ConfigTreeDataProvider, ConfigTreeItem } from '../../ui/configTreeDataProvider';
+import { CopyCommandHandler } from '../../handlers/copyCommandHandler';
+import { ConfigCommandHandler } from '../../handlers/configCommandHandler';
+import { NodeFileSystem } from '../../services/nodeFileSystem';
+import { MessageService } from '../../services/messageService';
 
-suite('Extension Activation Tests', () => {
-  const EXTENSION_ID = 'copycoder.copycoder';
-  let sandbox: sinon.SinonSandbox;
-  let clipboardServiceStub: sinon.SinonStubbedInstance<ClipboardService>;
+suite('CopyCoder Extension Tests', () => {
+  let context: vscode.ExtensionContext;
+  let globalConfigService: GlobalConfigService;
+  let fileService: FileService;
+  let clipboardService: ClipboardService;
+  let configTreeProvider: ConfigTreeDataProvider;
+  let copyCommandHandler: CopyCommandHandler;
+  let configCommandHandler: ConfigCommandHandler;
 
-  setup(() => {
-    sandbox = sinon.createSandbox();
-    // Create a stubbed ClipboardService
-    clipboardServiceStub = sandbox.createStubInstance(ClipboardService);
-    clipboardServiceStub.copyToClipboard.resolves();
-    clipboardServiceStub.readFromClipboard.resolves('');
+  setup(async () => {
+    context = {
+      subscriptions: [],
+      globalState: {
+        get: sinon.stub().returns(undefined),
+        update: sinon.stub().resolves()
+      }
+    } as any;
+    const fileSystem = new NodeFileSystem();
+    globalConfigService = new GlobalConfigService(fileSystem);
+    fileService = new FileService(fileSystem);
+    clipboardService = new ClipboardService();
+    configTreeProvider = new ConfigTreeDataProvider(globalConfigService);
+    copyCommandHandler = new CopyCommandHandler(fileService, clipboardService, globalConfigService);
+    configCommandHandler = new ConfigCommandHandler(globalConfigService, configTreeProvider);
+
+    sinon.stub(vscode.window, 'showInformationMessage').resolves();
+    sinon.stub(vscode.window, 'showErrorMessage').resolves();
+    sinon.stub(vscode.window, 'showWarningMessage').resolves();
+    sinon.stub(vscode.window, 'showInputBox').resolves();
   });
 
   teardown(() => {
-    sandbox.restore();
+    sinon.restore();
   });
 
-  test('Extension should be present', () => {
-    const extension = vscode.extensions.getExtension(EXTENSION_ID);
-    assert.ok(extension, 'Extension should be available');
+  test('Copy All Open Files', async () => {
+    const editorStub = {
+      document: {
+        uri: { fsPath: 'test.js' },
+        getText: () => 'console.log("Hello");'
+      }
+    };
+    sinon.stub(vscode.window, 'visibleTextEditors').value([editorStub]);
+    const clipboardSpy = sinon.spy(clipboardService, 'copyToClipboard');
+
+    await copyCommandHandler.copyOpenFiles();
+
+    assert.ok(clipboardSpy.calledOnce);
+    assert.ok((vscode.window.showInformationMessage as sinon.SinonStub).calledWith('Copied content of 1 open files.'));
   });
 
-  test('Extension should activate', async () => {
-    const extension = vscode.extensions.getExtension(EXTENSION_ID);
-    if (!extension) {
-      assert.fail('Extension not found');
-      return;
-    }
-    await extension.activate();
-    assert.strictEqual(extension.isActive, true);
+  test('Copy All Open Files - No Editors', async () => {
+    sinon.stub(vscode.window, 'visibleTextEditors').value([]);
+    await copyCommandHandler.copyOpenFiles();
+    assert.ok((vscode.window.showInformationMessage as sinon.SinonStub).calledWith('No open files to copy.'));
   });
 
-  test('Hello World command should show information message', async () => {
-    const spy = sandbox.spy(vscode.window, 'showInformationMessage');
-    await vscode.commands.executeCommand('copycoder.helloWorld');
-    assert.strictEqual(spy.calledOnceWith('Hello World from CopyCoder!'), true);
+  test('Copy All Project Files - No Workspace', async () => {
+    sinon.stub(vscode.workspace, 'workspaceFolders').value(undefined);
+    await copyCommandHandler.copyFiles();
+    assert.ok((vscode.window.showInformationMessage as sinon.SinonStub).calledWith('No workspace open to copy files from.'));
   });
 
-  test('Config tree item command should be registered', async () => {
-    const commands = await vscode.commands.getCommands();
-    assert.ok(commands.includes('copycoder.configTreeItemClicked'), 'Config command should be registered');
-  });
+  test('Reset Configuration', async () => {
+    (vscode.window.showWarningMessage as sinon.SinonStub).resolves('Yes');
+    const saveSpy = sinon.spy(globalConfigService, 'saveConfig');
 
-  test('Copy files command should be registered', async () => {
-    const commands = await vscode.commands.getCommands();
-    assert.ok(commands.includes('copycoder.copyFiles'), 'Copy files command should be registered');
-  });
-
-  test('Parse clipboard command should be registered', async () => {
-    const commands = await vscode.commands.getCommands();
-    assert.ok(commands.includes('copycoder.parseClipboard'), 'Parse clipboard command should be registered');
-  });
-
-  test('Copy files command should interact with clipboard or show message', async () => {
-    const showInfoSpy = sandbox.spy(vscode.window, 'showInformationMessage');
-    const showErrorSpy = sandbox.spy(vscode.window, 'showErrorMessage');
-    // Mock a workspace folder to test clipboard interaction
-    const workspaceFolders = [{ uri: { fsPath: '/test/workspace' } } as vscode.WorkspaceFolder];
-    sandbox.stub(vscode.workspace, 'workspaceFolders').value(workspaceFolders);
-    // Stub FileService using createStubInstance
-    const fileServiceStub = sandbox.createStubInstance(FileService);
-    fileServiceStub.scanWorkspaceFiles.resolves({
-      files: [{ path: 'src/app.js', content: 'console.log("test");' }],
-      hasGitignore: false,
+    await configCommandHandler.handleConfigTreeItem({
+      label: 'Reset Configuration',
+      commandId: 'resetConfig',
+      collapsibleState: vscode.TreeItemCollapsibleState.None,
+      contextValue: 'general-resetConfig'
     });
-    // Stub ClipboardService.formatFilesForClipboard
-    clipboardServiceStub.formatFilesForClipboard.returns('=== src/app.js ===\nconsole.log("test");\n');
-    await vscode.commands.executeCommand('copycoder.copyFiles');
-    assert.strictEqual(
-      clipboardServiceStub.copyToClipboard.called || showInfoSpy.called || showErrorSpy.called,
-      true,
-      'Should interact with clipboard, show info, or show error message'
-    );
+
+    assert.ok(saveSpy.calledWithMatch({ includeGlobalExtensions: true, filterUsingGitignore: true }));
+    assert.ok((vscode.window.showInformationMessage as sinon.SinonStub).calledWith('Configuration reset to defaults.'));
   });
 
-  test('Parse clipboard command should read clipboard', async () => {
-    const showInfoSpy = sandbox.spy(vscode.window, 'showInformationMessage');
-    await vscode.commands.executeCommand('copycoder.parseClipboard');
-    assert.strictEqual(
-      clipboardServiceStub.readFromClipboard.called || showInfoSpy.called,
-      true,
-      'Should read clipboard or show message'
-    );
+  test('Reset Configuration - Cancel', async () => {
+    (vscode.window.showWarningMessage as sinon.SinonStub).resolves('No');
+    const saveSpy = sinon.spy(globalConfigService, 'saveConfig');
+
+    await configCommandHandler.handleConfigTreeItem({
+      label: 'Reset Configuration',
+      commandId: 'resetConfig',
+      collapsibleState: vscode.TreeItemCollapsibleState.None,
+      contextValue: 'general-resetConfig'
+    });
+
+    assert.ok(saveSpy.notCalled);
+  });
+
+  test('Delete Project Type', async () => {
+    (vscode.window.showWarningMessage as sinon.SinonStub).resolves('Yes');
+    const config = globalConfigService.getConfig();
+    config.projectTypes.push('test');
+    globalConfigService.saveConfig(config);
+
+    await configCommandHandler.handleConfigTreeItem({
+      label: 'test',
+      commandId: 'deleteProjectType',
+      collapsibleState: vscode.TreeItemCollapsibleState.None,
+      contextValue: 'projectType'
+    });
+
+    const updatedConfig = globalConfigService.getConfig();
+    assert.strictEqual(updatedConfig.projectTypes.includes('test'), false);
+    assert.ok((vscode.window.showInformationMessage as sinon.SinonStub).calledWith('Project type "test" deleted.'));
+  });
+
+  test('Add Project Type', async () => {
+    (vscode.window.showInputBox as sinon.SinonStub).resolves('newProject');
+    const saveSpy = sinon.spy(globalConfigService, 'saveConfig');
+
+    await configCommandHandler.handleConfigTreeItem({
+      label: 'Add Project Type',
+      commandId: 'addProjectType',
+      collapsibleState: vscode.TreeItemCollapsibleState.None,
+      contextValue: 'add-project-type'
+    });
+
+    const config = globalConfigService.getConfig();
+    assert.ok(config.projectTypes.includes('newProject'));
+    assert.ok((vscode.window.showInformationMessage as sinon.SinonStub).calledWith('Project type "newProject" added.'));
+    assert.ok(saveSpy.called);
+  });
+
+  test('Add Global Extension', async () => {
+    (vscode.window.showInputBox as sinon.SinonStub).resolves('.new');
+    const saveSpy = sinon.spy(globalConfigService, 'saveConfig');
+
+    await configCommandHandler.handleConfigTreeItem({
+      label: 'Add Global Extension',
+      commandId: 'addGlobalExtension',
+      collapsibleState: vscode.TreeItemCollapsibleState.None,
+      contextValue: 'add-global-extension'
+    });
+
+    const config = globalConfigService.getConfig();
+    assert.ok(config.globalExtensions.includes('.new'));
+    assert.ok((vscode.window.showInformationMessage as sinon.SinonStub).calledWith('Global extension ".new" added.'));
+    assert.ok(saveSpy.called);
+  });
+
+  test('Delete Global Extension', async () => {
+    (vscode.window.showWarningMessage as sinon.SinonStub).resolves('Yes');
+    const config = globalConfigService.getConfig();
+    config.globalExtensions.push('.test');
+    globalConfigService.saveConfig(config);
+
+    await configCommandHandler.handleConfigTreeItem({
+      label: '.test',
+      commandId: 'deleteGlobalExtension',
+      collapsibleState: vscode.TreeItemCollapsibleState.None,
+      contextValue: 'extensions-global'
+    });
+
+    const updatedConfig = globalConfigService.getConfig();
+    assert.strictEqual(updatedConfig.globalExtensions.includes('.test'), false);
+    assert.ok((vscode.window.showInformationMessage as sinon.SinonStub).calledWith('Global extension ".test" deleted.'));
+  });
+
+  test('Add Custom Blacklist', async () => {
+    (vscode.window.showInputBox as sinon.SinonStub).resolves('testDir');
+    const config = globalConfigService.getConfig();
+    config.projectTypes = ['node'];
+    globalConfigService.saveConfig(config);
+
+    await configCommandHandler.handleConfigTreeItem({
+      label: 'Add Blacklist Item',
+      commandId: 'addCustomBlacklist',
+      collapsibleState: vscode.TreeItemCollapsibleState.None,
+      contextValue: 'add-project-blacklist:node'
+    });
+
+    const updatedConfig = globalConfigService.getConfig();
+    assert.ok(updatedConfig.customBlacklist['node'].includes('testDir'));
+    assert.ok((vscode.window.showInformationMessage as sinon.SinonStub).calledWith('Blacklist item "testDir" added for "node".'));
   });
 });

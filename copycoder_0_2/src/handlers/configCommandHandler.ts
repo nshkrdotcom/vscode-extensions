@@ -1,216 +1,215 @@
 // src/handlers/configCommandHandler.ts
-import * as vscode from 'vscode';
-import { ConfigTreeItem } from '../ui/configTreeDataProvider';
 import { GlobalConfigService } from '../services/globalConfigService';
+import { ConfigTreeDataProvider, ConfigTreeItem } from '../ui/configTreeDataProvider';
+import { Config, DEFAULT_CONFIG } from '../models/config';
 import { MessageService } from '../services/messageService';
-import { Config } from '../models/config';
+import * as vscode from 'vscode';
 
 export class ConfigCommandHandler {
   constructor(
-    private configService: GlobalConfigService,
-    private treeProvider: any // Note: treeProvider type should be properly defined if needed
+    private readonly globalConfigService: GlobalConfigService,
+    private readonly treeProvider: ConfigTreeDataProvider
   ) {}
 
-  public async handleConfigTreeItem(item: ConfigTreeItem): Promise<void> {
-    const config = this.configService.getConfig();
+  async handleConfigTreeItem(item: ConfigTreeItem): Promise<void> {
+    const config = this.globalConfigService.getConfig();
 
-    switch (item.type) {
-      case 'general-includeGlobalExtensions':
+    try {
+      // Toggle settings
+      if (item.commandId === 'toggleIncludeGlobalExtensions') {
         config.includeGlobalExtensions = !config.includeGlobalExtensions;
-        MessageService.showInfo(`Include Global Extensions: ${config.includeGlobalExtensions ? 'Enabled' : 'Disabled'}`);
-        this.configService.saveConfig(config);
-        vscode.commands.executeCommand('copycoder.refreshConfigTree');
-        break;
-
-      case 'general-applyGlobalBlacklist':
-        config.applyGlobalBlacklist = !config.applyGlobalBlacklist;
-        MessageService.showInfo(`Apply Global Blacklist: ${config.applyGlobalBlacklist ? 'Enabled' : 'Disabled'}`);
-        this.configService.saveConfig(config);
-        vscode.commands.executeCommand('copycoder.refreshConfigTree');
-        break;
-
-      case 'general-filterUsingGitignore':
+      } else if (item.commandId === 'toggleFilterUsingGitignore') {
         config.filterUsingGitignore = !config.filterUsingGitignore;
-        MessageService.showInfo(`Filter Using .gitignore: ${config.filterUsingGitignore ? 'Enabled' : 'Disabled'}`);
-        this.configService.saveConfig(config);
-        vscode.commands.executeCommand('copycoder.refreshConfigTree');
-        break;
-
-      case 'extensions-global':
-      case 'extensions-custom':
-        const extType = item.type.split('-')[1];
-        const confirmRemoveExt = await MessageService.prompt(`Remove ${item.label} from ${extType} extensions?`);
-        if (confirmRemoveExt === 'Yes') {
-          if (item.type === 'extensions-global') {
-            config.globalExtensions = config.globalExtensions.filter((ext: string) => ext !== item.value);
-          } else {
-            config.customExtensions = config.customExtensions.filter((ext: string) => ext !== item.value);
+      }
+      // Reset configuration
+      else if (item.commandId === 'resetConfig') {
+        const choice = await vscode.window.showWarningMessage(
+          'Are you sure you want to reset all CopyCoder settings to defaults? This cannot be undone.',
+          { modal: true },
+          'Yes',
+          'No'
+        );
+        if (choice === 'Yes') {
+          this.globalConfigService.saveConfig(DEFAULT_CONFIG);
+          MessageService.showInfo('Configuration reset to defaults.');
+        } else {
+          return;
+        }
+      }
+      // Delete actions
+      else if (item.commandId === 'deleteProjectType') {
+        const projectType = item.label;
+        const choice = await vscode.window.showWarningMessage(
+          `Are you sure you want to delete project type "${projectType}"?`,
+          { modal: true },
+          'Yes',
+          'No'
+        );
+        if (choice === 'Yes') {
+          config.projectTypes = config.projectTypes.filter(pt => pt !== projectType);
+          delete config.customExtensions[projectType];
+          delete config.customBlacklist[projectType];
+          MessageService.showInfo(`Project type "${projectType}" deleted.`);
+        } else {
+          return;
+        }
+      }
+      else if (item.commandId === 'deleteGlobalExtension') {
+        const ext = item.label;
+        const choice = await vscode.window.showWarningMessage(
+          `Are you sure you want to delete global extension "${ext}"?`,
+          { modal: true },
+          'Yes',
+          'No'
+        );
+        if (choice === 'Yes') {
+          config.globalExtensions = config.globalExtensions.filter(e => e !== ext);
+          MessageService.showInfo(`Global extension "${ext}" deleted.`);
+        } else {
+          return;
+        }
+      }
+      else if (item.commandId === 'deleteCustomExtension') {
+        const [, projectType, ext] = item.contextValue!.split(':');
+        const choice = await vscode.window.showWarningMessage(
+          `Are you sure you want to delete extension "${ext}" for project type "${projectType}"?`,
+          { modal: true },
+          'Yes',
+          'No'
+        );
+        if (choice === 'Yes') {
+          config.customExtensions[projectType] = (config.customExtensions[projectType] || []).filter(e => e !== ext);
+          MessageService.showInfo(`Extension "${ext}" deleted for "${projectType}".`);
+        } else {
+          return;
+        }
+      }
+      else if (item.commandId === 'deleteGlobalBlacklist') {
+        const itemName = item.label;
+        const choice = await vscode.window.showWarningMessage(
+          `Are you sure you want to delete global blacklist item "${itemName}"?`,
+          { modal: true },
+          'Yes',
+          'No'
+        );
+        if (choice === 'Yes') {
+          config.globalBlacklist = config.globalBlacklist.filter(b => b !== itemName);
+          MessageService.showInfo(`Global blacklist item "${itemName}" deleted.`);
+        } else {
+          return;
+        }
+      }
+      else if (item.commandId === 'deleteCustomBlacklist') {
+        const [, projectType, itemName] = item.contextValue!.split(':');
+        const choice = await vscode.window.showWarningMessage(
+          `Are you sure you want to delete blacklist item "${itemName}" for project type "${projectType}"?`,
+          { modal: true },
+          'Yes',
+          'No'
+        );
+        if (choice === 'Yes') {
+          config.customBlacklist[projectType] = (config.customBlacklist[projectType] || []).filter(b => b !== itemName);
+          MessageService.showInfo(`Blacklist item "${itemName}" deleted for "${projectType}".`);
+        } else {
+          return;
+        }
+      }
+      // Add actions
+      else if (item.commandId === 'addProjectType') {
+        const projectType = await vscode.window.showInputBox({
+          prompt: 'Enter new project type (e.g., node, python)',
+          validateInput: (value) => {
+            if (!value || value.trim().length === 0) {return 'Project type cannot be empty.';}
+            if (config.projectTypes.includes(value)) {return 'Project type already exists.';}
+            return null;
           }
-          MessageService.showInfo(`Removed extension: ${item.label} (${extType})`);
-          this.configService.saveConfig(config);
-          vscode.commands.executeCommand('copycoder.refreshConfigTree');
+        });
+        if (projectType) {
+          config.projectTypes.push(projectType);
+          config.customExtensions[projectType] = [];
+          config.customBlacklist[projectType] = [];
+          MessageService.showInfo(`Project type "${projectType}" added.`);
+        } else {
+          return;
         }
-        break;
-
-      case 'blacklist-global':
-      case 'blacklist-custom':
-        const blacklistType = item.type.split('-')[1];
-        const confirmRemoveBlacklist = await MessageService.prompt(
-          `Remove ${item.label} from ${blacklistType} blacklist?`
-        );
-        if (confirmRemoveBlacklist === 'Yes') {
-          if (item.type === 'blacklist-global') {
-            config.globalBlacklist = config.globalBlacklist.filter((b: string) => b !== item.value);
-          } else {
-            config.customBlacklist = config.customBlacklist.filter((b: string) => b !== item.value);
+      }
+      else if (item.commandId === 'addGlobalExtension') {
+        const ext = await vscode.window.showInputBox({
+          prompt: 'Enter file extension (e.g., .js)',
+          validateInput: (value) => {
+            if (!value || value.trim().length === 0) {return 'Extension cannot be empty.';}
+            if (!value.startsWith('.')) {return 'Extension must start with a dot.';}
+            if (config.globalExtensions.includes(value)) {return 'Extension already exists.';}
+            return null;
           }
-          MessageService.showInfo(`Removed blacklist item: ${item.label} (${blacklistType})`);
-          this.configService.saveConfig(config);
-          vscode.commands.executeCommand('copycoder.refreshConfigTree');
+        });
+        if (ext) {
+          config.globalExtensions.push(ext);
+          MessageService.showInfo(`Global extension "${ext}" added.`);
+        } else {
+          return;
         }
-        break;
-
-      case 'projectType':
-        const confirmToggle = await MessageService.prompt(`Disable ${item.label} project type?`);
-        if (confirmToggle === 'Yes') {
-          config.enabledProjectTypes = config.enabledProjectTypes.filter((type: string) => type !== item.value);
-          MessageService.showInfo(`Disabled project type: ${item.label}`);
-          this.configService.saveConfig(config);
-          vscode.commands.executeCommand('copycoder.refreshConfigTree');
-        }
-        break;
-
-      case 'extensions-project':
-        const confirmRemoveProjectExt = await MessageService.prompt(
-          `Remove ${item.label} from ${item.parentLabel} extensions?`
-        );
-        if (confirmRemoveProjectExt === 'Yes' && item.value && item.parentLabel) {
-          config.projectExtensions[item.parentLabel] = config.projectExtensions[item.parentLabel].filter(
-            (ext: string) => ext !== item.value
-          );
-          MessageService.showInfo(`Removed extension: ${item.label} (${item.parentLabel})`);
-          this.configService.saveConfig(config);
-          vscode.commands.executeCommand('copycoder.refreshConfigTree');
-        }
-        break;
-
-      case 'blacklist-project':
-        const confirmRemoveProjectBlacklist = await MessageService.prompt(
-          `Remove ${item.label} from ${item.parentLabel} blacklist?`
-        );
-        if (confirmRemoveProjectBlacklist === 'Yes' && item.value && item.parentLabel) {
-          config.projectBlacklist[item.parentLabel] = config.projectBlacklist[item.parentLabel].filter(
-            (b: string) => b !== item.value
-          );
-          MessageService.showInfo(`Removed blacklist item: ${item.label} (${item.parentLabel})`);
-          this.configService.saveConfig(config);
-          vscode.commands.executeCommand('copycoder.refreshConfigTree');
-        }
-        break;
-
-      case 'add-global-extension':
-        const globalExtInput = await MessageService.promptInput(
-          'Enter global extension (e.g., .md):',
-          'Enter global extension'
-        );
-        if (globalExtInput) {
-          config.globalExtensions.push(globalExtInput);
-          MessageService.showInfo(`Added global extension: ${globalExtInput}`);
-          this.configService.saveConfig(config);
-          vscode.commands.executeCommand('copycoder.refreshConfigTree');
-        }
-        break;
-
-      case 'add-custom-extension':
-        const customExtInput = await MessageService.promptInput(
-          'Enter custom extension (e.g., .custom):',
-          'Enter custom extension'
-        );
-        if (customExtInput) {
-          config.customExtensions.push(customExtInput);
-          MessageService.showInfo(`Added custom extension: ${customExtInput}`);
-          this.configService.saveConfig(config);
-          vscode.commands.executeCommand('copycoder.refreshConfigTree');
-        }
-        break;
-
-      case 'add-project-extension':
-        if (item.parentLabel) {
-          const projectExtInput = await MessageService.promptInput(
-            `Enter extension for ${item.parentLabel} (e.g., .ts):`,
-            `Enter extension for ${item.parentLabel}`
-          );
-          if (projectExtInput) {
-            config.projectExtensions[item.parentLabel] = [
-              ...(config.projectExtensions[item.parentLabel] || []),
-              projectExtInput,
-            ];
-            MessageService.showInfo(`Added extension: ${projectExtInput} (${item.parentLabel})`);
-            this.configService.saveConfig(config);
-            vscode.commands.executeCommand('copycoder.refreshConfigTree');
+      }
+      else if (item.commandId === 'addCustomExtension') {
+        const projectType = item.contextValue!.split(':')[1];
+        const ext = await vscode.window.showInputBox({
+          prompt: `Enter file extension for ${projectType} (e.g., .js)`,
+          validateInput: (value) => {
+            if (!value || value.trim().length === 0) {return 'Extension cannot be empty.';}
+            if (!value.startsWith('.')) {return 'Extension must start with a dot.';}
+            if ((config.customExtensions[projectType] || []).includes(value)) {return 'Extension already exists.';}
+            return null;
           }
+        });
+        if (ext) {
+          config.customExtensions[projectType] = (config.customExtensions[projectType] || []).concat(ext);
+          MessageService.showInfo(`Extension "${ext}" added for "${projectType}".`);
+        } else {
+          return;
         }
-        break;
-
-      case 'add-global-blacklist':
-        const globalBlacklistInput = await MessageService.promptInput(
-          'Enter global blacklist item (e.g., node_modules):',
-          'Enter global blacklist item'
-        );
-        if (globalBlacklistInput) {
-          config.globalBlacklist.push(globalBlacklistInput);
-          MessageService.showInfo(`Added global blacklist item: ${globalBlacklistInput}`);
-          this.configService.saveConfig(config);
-          vscode.commands.executeCommand('copycoder.refreshConfigTree');
-        }
-        break;
-
-      case 'add-custom-blacklist':
-        const customBlacklistInput = await MessageService.promptInput(
-          'Enter custom blacklist item (e.g., temp):',
-          'Enter custom blacklist item'
-        );
-        if (customBlacklistInput) {
-          config.customBlacklist.push(customBlacklistInput);
-          MessageService.showInfo(`Added custom blacklist item: ${customBlacklistInput}`);
-          this.configService.saveConfig(config);
-          vscode.commands.executeCommand('copycoder.refreshConfigTree');
-        }
-        break;
-
-      case 'add-project-blacklist':
-        if (item.parentLabel) {
-          const projectBlacklistInput = await MessageService.promptInput(
-            `Enter blacklist item for ${item.parentLabel} (e.g., dist):`,
-            `Enter blacklist item for ${item.parentLabel}`
-          );
-          if (projectBlacklistInput) {
-            config.projectBlacklist[item.parentLabel] = [
-              ...(config.projectBlacklist[item.parentLabel] || []),
-              projectBlacklistInput,
-            ];
-            MessageService.showInfo(`Added blacklist item: ${projectBlacklistInput} (${item.parentLabel})`);
-            this.configService.saveConfig(config);
-            vscode.commands.executeCommand('copycoder.refreshConfigTree');
+      }
+      else if (item.commandId === 'addGlobalBlacklist') {
+        const itemName = await vscode.window.showInputBox({
+          prompt: 'Enter file or folder name to blacklist (e.g., node_modules)',
+          validateInput: (value) => {
+            if (!value || value.trim().length === 0) {return 'Blacklist item cannot be empty.';}
+            if (config.globalBlacklist.includes(value)) {return 'Item already exists.';}
+            return null;
           }
+        });
+        if (itemName) {
+          config.globalBlacklist.push(itemName);
+          MessageService.showInfo(`Global blacklist item "${itemName}" added.`);
+        } else {
+          return;
         }
-        break;
-
-      case 'add-project-type':
-        const projectTypeInput = await MessageService.promptInput(
-          'Enter project type (e.g., python):',
-          'Enter project type'
-        );
-        if (projectTypeInput) {
-          config.enabledProjectTypes.push(projectTypeInput);
-          MessageService.showInfo(`Added project type: ${projectTypeInput}`);
-          this.configService.saveConfig(config);
-          vscode.commands.executeCommand('copycoder.refreshConfigTree');
+      }
+      else if (item.commandId === 'addCustomBlacklist') {
+        const projectType = item.contextValue!.split(':')[1];
+        const itemName = await vscode.window.showInputBox({
+          prompt: `Enter file or folder name to blacklist for ${projectType}`,
+          validateInput: (value) => {
+            if (!value || value.trim().length === 0) {return 'Blacklist item cannot be empty.';}
+            if ((config.customBlacklist[projectType] || []).includes(value)) {return 'Item already exists.';}
+            return null;
+          }
+        });
+        if (itemName) {
+          config.customBlacklist[projectType] = (config.customBlacklist[projectType] || []).concat(itemName);
+          MessageService.showInfo(`Blacklist item "${itemName}" added for "${projectType}".`);
+        } else {
+          return;
         }
-        break;
+      }
+      else {
+        MessageService.showInfo(`Unknown command: ${item.commandId}`);
+        return;
+      }
 
-      default:
-        break;
+      this.globalConfigService.saveConfig(config);
+      this.treeProvider.refresh();
+    } catch (error) {
+      MessageService.showError(`Failed to update configuration: ${error}`);
     }
   }
 }

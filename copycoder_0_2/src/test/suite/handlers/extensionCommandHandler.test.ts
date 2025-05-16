@@ -21,6 +21,6 @@ suite('ExtensionCommandHandler Tests', () => {
 
   test('should show hello world message', async () => {
     await handler.helloWorld();
-    assert.strictEqual(showInfoStub.calledWith('Hello World from CopyCoder!'), true);
+    assert.strictEqual(showInfoStub.calledWith('Hello from CopyCoder! Thanks for using our extension.'), true);
   });
 });

@@ -1,9 +1,8 @@
-// src/test/suite/services/configService.test.ts
 import * as assert from 'assert';
 import * as vscode from 'vscode';
 import * as sinon from 'sinon';
 import { ConfigService } from '../../../services/configService';
-import { CopyCodeConfig, DEFAULT_CONFIG } from '../../../models';
+import { Config, DEFAULT_CONFIG } from '../../../models'; // Updated import to match Config
 
 suite('ConfigService Tests', () => {
     let storage: vscode.Memento;
@@ -18,11 +17,11 @@ suite('ConfigService Tests', () => {
             update: sandbox.stub().resolves(),
             keys: () => []
         } as any;
-        configService = new ConfigService(storage);
+        configService = new ConfigService(storage); // Fixed line
     });
 
     teardown(() => {
-        sandbox.restore();
+        sandbox.restore(); // Moved to teardown for proper cleanup
     });
 
     test('should return DEFAULT_CONFIG when no saved config exists', () => {
@@ -32,27 +31,29 @@ suite('ConfigService Tests', () => {
     });
 
     test('should merge saved config with DEFAULT_CONFIG', () => {
-        const savedConfig: Partial<CopyCodeConfig> = {
+        const savedConfig: Partial<Config> = {
             includeGlobalExtensions: false,
-            enabledProjectTypes: ['node'],
-            customExtensions: ['.custom']
+            projectTypes: ['node'],
+            customExtensions: { node: ['.custom'] } // Updated to match Config interface
         };
         (storage.get as sinon.SinonStub).returns(savedConfig);
         const config = configService.getConfig();
         assert.strictEqual(config.includeGlobalExtensions, false);
-        assert.deepStrictEqual(config.enabledProjectTypes, ['node']);
-        assert.deepStrictEqual(config.customExtensions, ['.custom']);
-        assert.strictEqual(config.applyGlobalBlacklist, DEFAULT_CONFIG.applyGlobalBlacklist); // From default
-        assert.deepStrictEqual(config.customBlacklist, DEFAULT_CONFIG.customBlacklist); // From default
+        assert.deepStrictEqual(config.projectTypes, ['node']);
+        assert.deepStrictEqual(config.customExtensions.node, ['.custom']);
+        assert.strictEqual(config.filterUsingGitignore, DEFAULT_CONFIG.filterUsingGitignore);
+        assert.deepStrictEqual(config.globalBlacklist, DEFAULT_CONFIG.globalBlacklist);
     });
 
     test('should save config to storage', async () => {
-        const newConfig: CopyCodeConfig = {
+        const newConfig: Config = {
             includeGlobalExtensions: false,
-            applyGlobalBlacklist: true,
-            enabledProjectTypes: ['python'],
-            customExtensions: ['.test'],
-            customBlacklist: ['test.txt']
+            filterUsingGitignore: true,
+            projectTypes: ['python'],
+            globalExtensions: ['.py'],
+            customExtensions: { python: ['.test'] },
+            globalBlacklist: ['__pycache__'],
+            customBlacklist: { python: ['test.txt'] }
         };
         await configService.saveConfig(newConfig);
         assert.strictEqual(

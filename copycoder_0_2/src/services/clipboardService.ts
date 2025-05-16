@@ -1,34 +1,16 @@
-// src/services/clipboardService.ts
 import * as vscode from 'vscode';
-import { ParsedCodeBlock } from '../models';
+import { FileContent } from './fileService';
 
 export class ClipboardService {
-    private readonly clipboard: typeof vscode.env.clipboard;
+  async copyToClipboard(content: string): Promise<void> {
+    await vscode.env.clipboard.writeText(content);
+  }
 
-    constructor(clipboard: typeof vscode.env.clipboard = vscode.env.clipboard) {
-        this.clipboard = clipboard;
-    }
+  async readFromClipboard(): Promise<string> {
+    return await vscode.env.clipboard.readText();
+  }
 
-    /**
-     * Copy content to clipboard
-     */
-    public async copyToClipboard(content: string): Promise<void> {
-        return this.clipboard.writeText(content);
-    }
-
-    /**
-     * Read content from clipboard
-     */
-    public async readFromClipboard(): Promise<string> {
-        return this.clipboard.readText();
-    }
-
-    /**
-     * Format files for copying to clipboard
-     */
-    public formatFilesForClipboard(files: { path: string; content: string }[]): string {
-        return files
-            .map(file => `=== ${file.path} ===\n${file.content}\n`)
-            .join('\n');
-    }
+  formatFilesForClipboard(files: FileContent[]): string {
+    return files.map(file => `=== ${file.path} ===\n${file.content}\n`).join('\n');
+  }
 }

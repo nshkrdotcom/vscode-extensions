@@ -1,18 +1,18 @@
 // src/services/configService.ts
 import * as vscode from 'vscode';
-import { CopyCodeConfig, DEFAULT_CONFIG } from '../models';
+import { Config, DEFAULT_CONFIG } from '../models/config';
 
 export class ConfigService {
-    private readonly storageKey = 'copyCodeConfig';
+  private readonly storageKey = 'copyCodeConfig';
 
-    constructor(private readonly storage: vscode.Memento) {}
+  constructor(private readonly storage: vscode.Memento) {}
 
-    public getConfig(): CopyCodeConfig {
-        const savedConfig = this.storage.get<CopyCodeConfig>(this.storageKey);
-        return savedConfig ? { ...DEFAULT_CONFIG, ...savedConfig } : { ...DEFAULT_CONFIG };
-    }
+  public getConfig(): Config {
+    const savedConfig = this.storage.get<Config>(this.storageKey);
+    return savedConfig ? { ...DEFAULT_CONFIG, ...savedConfig } : { ...DEFAULT_CONFIG };
+  }
 
-    public async saveConfig(newConfig: CopyCodeConfig): Promise<void> {
-        await this.storage.update(this.storageKey, newConfig);
-    }
+  public async saveConfig(newConfig: Config): Promise<void> {
+    await this.storage.update(this.storageKey, newConfig);
+  }
 }
