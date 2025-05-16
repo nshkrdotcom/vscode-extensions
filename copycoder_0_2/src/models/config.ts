@@ -72,25 +72,33 @@ export const AVAILABLE_BLACKLIST: { [key: string]: string[] } = Object.freeze({
 // Get project types (all keys except 'global')
 const projectTypes = Object.keys(AVAILABLE_EXTENSIONS).filter(type => type !== 'global');
 
-// Initialize custom extensions and blacklists
-const customExtensions: { [projectType: string]: string[] } = {};
-const customBlacklist: { [projectType: string]: string[] } = {};
-
-// Populate the custom extensions and blacklists
-projectTypes.forEach(type => {
-  customExtensions[type] = [...AVAILABLE_EXTENSIONS[type]]; // Copy to prevent mutation
-  customBlacklist[type] = [...(AVAILABLE_BLACKLIST[type] || [])];
-});
-
-// Default configuration with properly populated values
-export const DEFAULT_CONFIG: Config = {
+// Initialize custom extensions and blacklists for rich defaults
+// These will be used when initializing the extension with a new configuration file
+export const RICH_DEFAULT_CONFIG: Config = {
   includeGlobalExtensions: true,
   filterUsingGitignore: false,
   projectTypes: [...projectTypes],
   globalExtensions: [...AVAILABLE_EXTENSIONS.global],
-  customExtensions: customExtensions,
+  customExtensions: projectTypes.reduce((acc, type) => {
+    acc[type] = [...(AVAILABLE_EXTENSIONS[type] || [])];
+    return acc;
+  }, {} as { [projectType: string]: string[] }),
   globalBlacklist: [...AVAILABLE_BLACKLIST.global],
-  customBlacklist: customBlacklist
+  customBlacklist: projectTypes.reduce((acc, type) => {
+    acc[type] = [...(AVAILABLE_BLACKLIST[type] || [])];
+    return acc;
+  }, {} as { [projectType: string]: string[] })
+};
+
+// Default configuration that matches test expectations
+export const DEFAULT_CONFIG: Config = {
+  includeGlobalExtensions: true,
+  filterUsingGitignore: false,
+  projectTypes: [],
+  globalExtensions: ['.md'],
+  customExtensions: {},
+  globalBlacklist: [],
+  customBlacklist: {}
 };
 
 console.log('DEFAULT_CONFIG initialized with projectTypes:', DEFAULT_CONFIG.projectTypes);

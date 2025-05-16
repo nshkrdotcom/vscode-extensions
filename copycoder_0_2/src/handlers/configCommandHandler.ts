@@ -11,6 +11,8 @@ export class ConfigCommandHandler {
 
   async handleConfigTreeItem(item: ConfigTreeItem): Promise<void> {
     try {
+      console.log(`Debug: handleConfigTreeItem called with commandId ${item.commandId}`);
+      
       if (item.commandId === 'toggleIncludeGlobalExtensions') {
         const config = this.globalConfigService.getConfig();
         await this.globalConfigService.updateConfig({
@@ -31,10 +33,9 @@ export class ConfigCommandHandler {
         );
         if (choice === 'Yes') {
           try {
-            // First delete the existing config
-            await this.globalConfigService.deleteConfig();
-            // Then reset to default
-            await this.globalConfigService.resetConfig();
+            console.log('Debug: resetConfig confirmed by user');
+            // Reset directly to default
+            this.globalConfigService.resetConfig();
             // Refresh the tree view
             this.treeProvider.refresh();
             await vscode.window.showInformationMessage('Configuration reset to defaults.');
@@ -47,6 +48,8 @@ export class ConfigCommandHandler {
       // Delete actions
       else if (item.commandId === 'deleteProjectType') {
         const projectType = item.label;
+        console.log(`Debug: Requesting deletion of project type "${projectType}"`);
+        
         const choice = await vscode.window.showWarningMessage(
           `Are you sure you want to delete project type "${projectType}"?`,
           { modal: true },
@@ -54,22 +57,36 @@ export class ConfigCommandHandler {
           'No'
         );
         if (choice === 'Yes') {
+          console.log(`Debug: User confirmed deletion of project type "${projectType}"`);
           const config = this.globalConfigService.getConfig();
+          console.log(`Debug: Current projectTypes:`, config.projectTypes);
+          
+          const newProjectTypes = config.projectTypes.filter(pt => pt !== projectType);
+          console.log(`Debug: New projectTypes:`, newProjectTypes);
+          
           const newCustomExtensions = { ...config.customExtensions };
           const newCustomBlacklist = { ...config.customBlacklist };
+          
+          console.log(`Debug: Removing "${projectType}" from customExtensions and customBlacklist`);
           delete newCustomExtensions[projectType];
           delete newCustomBlacklist[projectType];
+          
+          console.log(`Debug: Updating config with new values`);
           await this.globalConfigService.updateConfig({
-            projectTypes: config.projectTypes.filter(pt => pt !== projectType),
+            projectTypes: newProjectTypes,
             customExtensions: newCustomExtensions,
             customBlacklist: newCustomBlacklist
           });
+          
+          console.log(`Debug: Refreshing tree view after project type deletion`);
           this.treeProvider.refresh();
           MessageService.showInfo(`Project type "${projectType}" deleted.`);
         }
       }
       else if (item.commandId === 'deleteGlobalExtension') {
         const ext = item.label;
+        console.log(`Debug: Requesting deletion of global extension "${ext}"`);
+        
         const choice = await vscode.window.showWarningMessage(
           `Are you sure you want to delete global extension "${ext}"?`,
           { modal: true },
@@ -77,10 +94,18 @@ export class ConfigCommandHandler {
           'No'
         );
         if (choice === 'Yes') {
+          console.log(`Debug: User confirmed deletion of global extension "${ext}"`);
           const config = this.globalConfigService.getConfig();
+          console.log(`Debug: Current globalExtensions:`, config.globalExtensions);
+          
+          const newGlobalExtensions = config.globalExtensions.filter(e => e !== ext);
+          console.log(`Debug: New globalExtensions:`, newGlobalExtensions);
+          
           await this.globalConfigService.updateConfig({
-            globalExtensions: config.globalExtensions.filter(e => e !== ext)
+            globalExtensions: newGlobalExtensions
           });
+          
+          console.log(`Debug: Refreshing tree view after global extension deletion`);
           this.treeProvider.refresh();
           MessageService.showInfo(`Global extension "${ext}" deleted.`);
         }

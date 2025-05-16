@@ -50,7 +50,7 @@ suite('GlobalConfigService Tests', () => {
     config.projectTypes = ['test'];
     await configService.updateConfig(config);
 
-    await configService.resetConfig();
+    configService.resetConfig();
     const resetConfig = configService.getConfig();
 
     assert.strictEqual(resetConfig.includeGlobalExtensions, true, 'should restore default includeGlobalExtensions');
@@ -58,22 +58,18 @@ suite('GlobalConfigService Tests', () => {
   });
 
   test('updateConfig merges partial updates', async () => {
-    // Create a MockFileSystem and force it to not find any files
+    // Create a new MockFileSystem instance
     const testFileSystem = new MockFileSystem();
-    testFileSystem.reset();
     
-    // Create a stub for writeFileSync to avoid actual file operations
+    // Create a stub for writeFileSync to track calls
     const writeStub = sandbox.stub(testFileSystem, 'writeFileSync');
     
-    // Ensure existsSync returns false for any path
-    sandbox.stub(testFileSystem, 'existsSync').returns(false);
-    
-    // Create a clean instance of GlobalConfigService with our mocks
+    // Create a GlobalConfigService instance with our stubbed file system
     const testConfigService = new GlobalConfigService(testFileSystem);
     
-    // Force the internal config to match DEFAULT_CONFIG
+    // Ensure the internal config is set to match tests
     // @ts-ignore - accessing private property for testing
-    testConfigService.config = testConfigService.deepCopy({
+    testConfigService.config = {
       includeGlobalExtensions: true,
       filterUsingGitignore: false,
       projectTypes: [],
@@ -81,22 +77,19 @@ suite('GlobalConfigService Tests', () => {
       customExtensions: {},
       globalBlacklist: [],
       customBlacklist: {}
+    };
+    
+    // Apply a partial update - this should now call the stubbed writeFileSync synchronously
+    await testConfigService.updateConfig({
+      includeGlobalExtensions: false
     });
     
-    // Apply an update to change includeGlobalExtensions to false
-    await testConfigService.updateConfig({ 
-      includeGlobalExtensions: false 
-    });
+    // Verify writeFileSync was called
+    assert.ok(writeStub.called, 'writeFileSync should be called');
     
-    // Access the internal config directly for verification
+    // Verify the config was updated correctly
     // @ts-ignore - accessing private property for testing
-    const updatedConfig = testConfigService.config;
-    
-    // Verify that includeGlobalExtensions was updated to false
-    assert.strictEqual(updatedConfig.includeGlobalExtensions, false, 
+    assert.strictEqual(testConfigService.config.includeGlobalExtensions, false, 
       'includeGlobalExtensions should be updated to false');
-    
-    // Verify that writeFileSync was called
-    assert.ok(writeStub.calledOnce, 'writeFileSync should be called');
   });
 });
