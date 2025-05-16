@@ -4,6 +4,12 @@
   "displayName": "copycoder",
   "description": "copycoder",
   "version": "0.2.0",
+  "publisher":  "nshkrdotcom",
+  "repository":  {
+    "type":  "git",
+    "url":  "https://github.com/nshkrdotcom/vscode-extensions.git",
+    "directory":  "copycoder"
+  },  
   "engines": {
     "vscode": "^1.100.0"
   },
