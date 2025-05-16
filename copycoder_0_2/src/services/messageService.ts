@@ -16,4 +16,8 @@ export class MessageService {
             prompt: placeHolder
         });
     }
+
+    static async prompt(message: string): Promise<string | undefined> {
+        return await vscode.window.showInformationMessage(message, { modal: true }, 'Yes', 'No');
+    }
 }

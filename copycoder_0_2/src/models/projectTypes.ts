@@ -56,7 +56,7 @@ export const DEFAULT_BLACKLIST: { [key: string]: string[] } = {
         '.vscodeignore'
     ],
     'powershell': [
-        '*.psd1',  // Module manifest files
-        '*.psm1'   // Module files
+        '*.psd1',
+        '*.psm1'
     ]
 };

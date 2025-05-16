@@ -16,15 +16,26 @@ suite('GlobalConfigService Tests', () => {
   const defaultConfig = {
     includeGlobalExtensions: true,
     applyGlobalBlacklist: true,
-    filterUsingGitignore: true, // New field
-    projectExtensions: Object.fromEntries(
-      Object.entries(DEFAULT_EXTENSIONS).filter(([key]) => key !== 'global')
-    ),
-    globalExtensions: DEFAULT_EXTENSIONS.global || [],
-    projectBlacklist: Object.fromEntries(
-      Object.entries(DEFAULT_BLACKLIST).filter(([key]) => key !== 'global')
-    ),
-    globalBlacklist: DEFAULT_BLACKLIST.global || [],
+    filterUsingGitignore: true,
+    projectExtensions: { ...DEFAULT_EXTENSIONS },
+    globalExtensions: DEFAULT_EXTENSIONS['global'] || [],
+    projectBlacklist: { ...DEFAULT_BLACKLIST },
+    globalBlacklist: DEFAULT_BLACKLIST['global'] || [],
+    enabledProjectTypes: [
+      'powershell',
+      'terraform',
+      'bash',
+      'php',
+      'mysql',
+      'postgres',
+      'elixir',
+      'python',
+      'node',
+      'vscode',
+      'wsl2',
+    ],
+    customExtensions: [],
+    customBlacklist: [],
   };
 
   setup(() => {
@@ -72,7 +83,8 @@ suite('GlobalConfigService Tests', () => {
   test('should merge saved config with default config', () => {
     const savedConfig = {
       includeGlobalExtensions: false,
-      filterUsingGitignore: false, // New field
+      applyGlobalBlacklist: true,
+      filterUsingGitignore: false,
       projectExtensions: {
         python: ['.py'],
         node: ['.js'],
@@ -82,14 +94,18 @@ suite('GlobalConfigService Tests', () => {
         node: ['node_modules'],
       },
       globalBlacklist: ['.git'],
+      enabledProjectTypes: ['python', 'node'],
+      customExtensions: ['.custom'],
+      customBlacklist: ['temp'],
     };
     (mockFs.existsSync as sinon.SinonStub).returns(true);
     (mockFs.readFileSync as sinon.SinonStub).returns(JSON.stringify(savedConfig));
     const config = configService.getConfig();
     const expectedConfig = {
+      ...defaultConfig,
       includeGlobalExtensions: false,
       applyGlobalBlacklist: true,
-      filterUsingGitignore: false, // New field
+      filterUsingGitignore: false,
       projectExtensions: {
         ...defaultConfig.projectExtensions,
         python: ['.py'],
@@ -101,6 +117,9 @@ suite('GlobalConfigService Tests', () => {
         node: ['node_modules'],
       },
       globalBlacklist: ['.git'],
+      enabledProjectTypes: ['python', 'node'],
+      customExtensions: ['.custom'],
+      customBlacklist: ['temp'],
     };
     assert.deepStrictEqual(config, expectedConfig, 'Should merge saved config with defaults');
   });
@@ -111,7 +130,7 @@ suite('GlobalConfigService Tests', () => {
     const newConfig = {
       includeGlobalExtensions: false,
       applyGlobalBlacklist: false,
-      filterUsingGitignore: false, // New field
+      filterUsingGitignore: false,
       projectExtensions: {
         python: ['.py'],
       },
@@ -120,6 +139,9 @@ suite('GlobalConfigService Tests', () => {
         python: ['__pycache__'],
       },
       globalBlacklist: ['temp'],
+      enabledProjectTypes: ['python'],
+      customExtensions: ['.custom'],
+      customBlacklist: ['temp'],
     };
     configService.saveConfig(newConfig);
     assert.strictEqual(
@@ -134,7 +156,7 @@ suite('GlobalConfigService Tests', () => {
   });
 
   test('should handle file read errors gracefully', () => {
-    sandbox.stub(console, 'error'); // Suppress console.error output
+    sandbox.stub(console, 'error');
     (mockFs.existsSync as sinon.SinonStub).returns(true);
     (mockFs.readFileSync as sinon.SinonStub).throws(new Error('Read error'));
     const config = configService.getConfig();

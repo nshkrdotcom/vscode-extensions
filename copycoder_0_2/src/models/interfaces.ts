@@ -31,12 +31,25 @@ export interface ParsedCodeBlock {
 }
 
 
-export interface Config {
-  includeGlobalExtensions: boolean;
-  applyGlobalBlacklist: boolean;
-  filterUsingGitignore: boolean; // New field
-  projectExtensions: Record<string, string[]>;
-  globalExtensions: string[];
-  projectBlacklist: Record<string, string[]>;
-  globalBlacklist: string[];
-}
+// export interface Config {
+//   includeGlobalExtensions: boolean;
+//   applyGlobalBlacklist: boolean;
+//   filterUsingGitignore: boolean; // New field
+//   projectExtensions: Record<string, string[]>;
+//   globalExtensions: string[];
+//   projectBlacklist: Record<string, string[]>;
+//   globalBlacklist: string[];
+// }
+
+// export interface Config {
+//   includeGlobalExtensions: boolean;
+//   applyGlobalBlacklist: boolean;
+//   filterUsingGitignore: boolean;
+//   projectExtensions: { [key: string]: string[] };
+//   globalExtensions: string[];
+//   projectBlacklist: { [key: string]: string[] };
+//   globalBlacklist: string[];
+//   enabledProjectTypes: string[]; // Added
+//   customExtensions: string[]; // Added
+//   customBlacklist: string[]; // Added
+// }
