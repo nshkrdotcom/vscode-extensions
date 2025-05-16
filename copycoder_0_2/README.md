@@ -86,7 +86,7 @@ CopyCoder comes preconfigured with settings for these project types:
 ## Feedback and Contributions
 
 - File bugs or feature requests on our [GitHub repository](https://github.com/your-username/copycoder)
-- For questions or feedback, reach out to us at [your-email@example.com]
+- For questions or feedback, reach out to us at [ZeroTrust@NSHkr.com]
 
 ## License
 
