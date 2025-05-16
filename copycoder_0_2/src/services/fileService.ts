@@ -76,7 +76,9 @@ export class FileService {
       if (gitignorePatterns.length > 0) {
         gitignorePatterns.forEach(pattern => {
           // Skip empty patterns
-          if (!pattern) return;
+          if (!pattern) {
+            return;
+          }
           
           console.log(`FileService.scanWorkspaceFiles - Processing gitignore pattern: "${pattern}"`);
           
