@@ -64,17 +64,6 @@ export class ConfigTreeDataProvider implements vscode.TreeDataProvider<vscode.Tr
     else if (element.label === 'Global Blacklist') {
       return this.getGlobalBlacklistItems();
     }
-    else if (element.contextValue === 'projectType') {
-      return this.getProjectTypeChildren(element.label as string);
-    }
-    else if (element.contextValue?.startsWith('project-extensions:')) {
-      const projectType = element.contextValue.split(':')[1];
-      return this.getCustomExtensionItems(projectType);
-    }
-    else if (element.contextValue?.startsWith('project-blacklist:')) {
-      const projectType = element.contextValue.split(':')[1];
-      return this.getCustomBlacklistItems(projectType);
-    }
     else if (element.contextValue === 'extensions-custom') {
       // This is the case for "Custom Extensions" under "Extensions" root
       return this.getCustomExtensionsRoot();
@@ -155,8 +144,9 @@ export class ConfigTreeDataProvider implements vscode.TreeDataProvider<vscode.Tr
 
   private getProjectTypeItems(): vscode.TreeItem[] {
     const config = this.configService.getConfig();
+    // Make project types non-expandable - just a flat list for adding/deleting
     const items = config.projectTypes.map(pt =>
-      new ConfigTreeItem(pt, vscode.TreeItemCollapsibleState.Expanded, 'deleteProjectType', 'projectType')
+      new ConfigTreeItem(pt, vscode.TreeItemCollapsibleState.None, 'deleteProjectType', 'projectType')
     );
     items.push(
       new ConfigTreeItem('Add Project Type', vscode.TreeItemCollapsibleState.None, 'addProjectType', 'add-project-type')
@@ -200,19 +190,10 @@ export class ConfigTreeDataProvider implements vscode.TreeDataProvider<vscode.Tr
     return items;
   }
 
-  private getProjectTypeChildren(projectType: string): vscode.TreeItem[] {
-    console.log(`getProjectTypeChildren called for project type: ${projectType}`);
-    return [
-      // Use different context values to identify these cases specifically
-      new ConfigTreeItem('Extensions', vscode.TreeItemCollapsibleState.Expanded, undefined, `project-extensions:${projectType}`),
-      new ConfigTreeItem('Blacklist', vscode.TreeItemCollapsibleState.Expanded, undefined, `project-blacklist:${projectType}`)
-    ];
-  }
-
   private getCustomExtensionItems(projectType: string): vscode.TreeItem[] {
     console.log(`getCustomExtensionItems called for project type: ${projectType}`);
     
-    // Directly return extensions for this project type, no need for "Custom Extensions" node
+    // Return extensions for this project type
     const config = this.configService.getConfig();
     const extensions = config.customExtensions[projectType] || [];
     const items = extensions.map(ext =>
@@ -223,11 +204,11 @@ export class ConfigTreeDataProvider implements vscode.TreeDataProvider<vscode.Tr
     );
     return items;
   }
-
+  
   private getCustomBlacklistItems(projectType: string): vscode.TreeItem[] {
     console.log(`getCustomBlacklistItems called for project type: ${projectType}`);
     
-    // Directly return blacklist items for this project type, no need for "Custom Blacklist" node
+    // Return blacklist items for this project type
     const config = this.configService.getConfig();
     const blacklist = config.customBlacklist[projectType] || [];
     const items = blacklist.map(item =>
@@ -242,7 +223,7 @@ export class ConfigTreeDataProvider implements vscode.TreeDataProvider<vscode.Tr
   private getCustomExtensionsRoot(): vscode.TreeItem[] {
     console.log('getCustomExtensionsRoot called');
     const config = this.configService.getConfig();
-    // This method should be used ONLY for the top-level "Custom Extensions" node under "Extensions"
+    // Under Extensions > Custom Extensions, show all project types
     return config.projectTypes.map(pt =>
       new ConfigTreeItem(pt, vscode.TreeItemCollapsibleState.Collapsed, undefined, `extensions-custom:${pt}`)
     );
@@ -251,7 +232,7 @@ export class ConfigTreeDataProvider implements vscode.TreeDataProvider<vscode.Tr
   private getCustomBlacklistRoot(): vscode.TreeItem[] {
     console.log('getCustomBlacklistRoot called');
     const config = this.configService.getConfig();
-    // This method should be used ONLY for the top-level "Custom Blacklist" node under "Blacklist"
+    // Under Blacklist > Custom Blacklist, show all project types
     return config.projectTypes.map(pt =>
       new ConfigTreeItem(pt, vscode.TreeItemCollapsibleState.Collapsed, undefined, `blacklist-custom:${pt}`)
     );
