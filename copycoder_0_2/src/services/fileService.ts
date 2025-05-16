@@ -20,6 +20,7 @@ export class FileService {
     const files: FileContent[] = [];
     const patterns = this.buildPatterns(config);
 
+    console.log('FileService.scanWorkspaceFiles - Config filterUsingGitignore:', config.filterUsingGitignore);
     console.log('FileService.scanWorkspaceFiles - Got patterns:', {
       extensions: patterns.extensions,
       blacklist: patterns.blacklist
@@ -47,59 +48,84 @@ export class FileService {
     console.log(`FileService.scanWorkspaceFiles - Using include pattern: ${includePattern}`);
 
     // Build the exclude pattern for blacklisted files/directories
-    // Convert glob patterns to proper format that VS Code understands
-    const globPatterns = patterns.blacklist.map(pattern => {
+    let excludePatterns: string[] = [];
+    
+    // Process each blacklist pattern to proper VS Code glob format
+    patterns.blacklist.forEach(pattern => {
       // Handle patterns ending with /* to match directories
       if (pattern.endsWith('/*')) {
-        return `**/${pattern}`; 
+        excludePatterns.push(`**/${pattern}`);
       }
       // Handle patterns with wildcards
-      if (pattern.includes('*')) {
-        return `**/${pattern}`;
+      else if (pattern.includes('*')) {
+        excludePatterns.push(`**/${pattern}`);
       }
       // Regular files/directories
-      return `**/${pattern}/**`;
+      else {
+        excludePatterns.push(`**/${pattern}/**`);
+        // Also match the file/directory itself
+        excludePatterns.push(`**/${pattern}`); 
+      }
     });
 
-    const excludePattern = globPatterns.length > 0 ? `{${globPatterns.join(',')}}` : undefined;
+    // Add gitignore patterns if enabled
+    if (config.filterUsingGitignore) {
+      console.log('FileService.scanWorkspaceFiles - filterUsingGitignore is TRUE, processing .gitignore');
+      const gitignorePatterns = this.parseGitignore(workspaceRoot);
+      
+      if (gitignorePatterns.length > 0) {
+        gitignorePatterns.forEach(pattern => {
+          // Skip empty patterns
+          if (!pattern) return;
+          
+          console.log(`FileService.scanWorkspaceFiles - Processing gitignore pattern: "${pattern}"`);
+          
+          // Convert gitignore pattern to VS Code glob pattern
+          if (pattern.includes('*')) {
+            // Pattern already has wildcard
+            excludePatterns.push(`**/${pattern}`);
+          } 
+          else if (pattern.endsWith('/')) {
+            // Directory pattern (ends with /)
+            excludePatterns.push(`**/${pattern}**`);
+          } 
+          else {
+            // Could be file or directory, add both patterns
+            excludePatterns.push(`**/${pattern}/**`); // Match as directory
+            excludePatterns.push(`**/${pattern}`);    // Match as file
+          }
+        });
+      }
+      
+      // Always exclude node_modules and .git when using gitignore
+      if (!excludePatterns.includes('**/node_modules/**')) {
+        excludePatterns.push('**/node_modules/**');
+      }
+      if (!excludePatterns.includes('**/.git/**')) {
+        excludePatterns.push('**/.git/**');
+      }
+      
+      console.log(`FileService.scanWorkspaceFiles - Added ${gitignorePatterns.length} gitignore patterns`);
+    } else {
+      console.log('FileService.scanWorkspaceFiles - filterUsingGitignore is FALSE, skipping .gitignore');
+    }
+    
+    // Format the exclude pattern for VS Code
+    const excludePattern = excludePatterns.length > 0 
+      ? `{${excludePatterns.join(',')}}`
+      : undefined;
 
     console.log('FileService.scanWorkspaceFiles - workspaceRoot:', workspaceRoot);
     console.log('FileService.scanWorkspaceFiles - includePattern:', includePattern);
     console.log('FileService.scanWorkspaceFiles - excludePattern:', excludePattern);
-    console.log('FileService.scanWorkspaceFiles - filterUsingGitignore:', config.filterUsingGitignore);
+    console.log(`FileService.scanWorkspaceFiles - excludePatterns (${excludePatterns.length}):`, excludePatterns);
 
     try {
-      // If we are filtering using gitignore, add those patterns to the exclude pattern
-      let gitignoreExcludePattern: string | undefined;
-      
-      if (config.filterUsingGitignore) {
-        const gitignorePatterns = this.parseGitignore(workspaceRoot);
-        console.log('FileService.scanWorkspaceFiles - gitignore patterns:', gitignorePatterns);
-        
-        if (gitignorePatterns.length > 0) {
-          const gitignoreGlobs = gitignorePatterns.map(pattern => {
-            // Handle directory paths
-            if (!pattern.includes('*') && !pattern.endsWith('/')) {
-              return `**/${pattern}/**`;
-            }
-            return `**/${pattern}`;
-          });
-          
-          gitignoreExcludePattern = gitignoreGlobs.length > 0 ? `{${gitignoreGlobs.join(',')}}` : undefined;
-          console.log('FileService.scanWorkspaceFiles - gitignore exclude pattern:', gitignoreExcludePattern);
-        }
-      }
-
-      // Prepare the final exclude pattern combining blacklist and gitignore patterns
-      const finalExcludePattern = excludePattern && gitignoreExcludePattern 
-        ? `${excludePattern},${gitignoreExcludePattern}` 
-        : excludePattern || gitignoreExcludePattern;
-      
-      console.log('FileService.scanWorkspaceFiles - final exclude pattern:', finalExcludePattern);
-      
       // Use VS Code API to find files matching our patterns
-      const uris = finalExcludePattern 
-        ? await vscode.workspace.findFiles(includePattern, finalExcludePattern)
+      console.log(`FileService.scanWorkspaceFiles - Calling workspace.findFiles with includePattern: "${includePattern}", excludePattern: "${excludePattern || 'none'}"`);
+      
+      const uris = excludePattern
+        ? await vscode.workspace.findFiles(includePattern, excludePattern)
         : await vscode.workspace.findFiles(includePattern);
       
       console.log(`FileService.scanWorkspaceFiles - found ${uris.length} files matching patterns`);
