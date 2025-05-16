@@ -76,9 +76,11 @@ export class ConfigTreeDataProvider implements vscode.TreeDataProvider<vscode.Tr
       return this.getCustomBlacklistItems(projectType);
     }
     else if (element.contextValue === 'extensions-custom') {
+      // This is the case for "Custom Extensions" under "Extensions" root
       return this.getCustomExtensionsRoot();
     }
     else if (element.contextValue === 'blacklist-custom') {
+      // This is the case for "Custom Blacklist" under "Blacklist" root
       return this.getCustomBlacklistRoot();
     }
     // Handle the case when contextValue is extensions-custom:node
@@ -199,13 +201,16 @@ export class ConfigTreeDataProvider implements vscode.TreeDataProvider<vscode.Tr
   }
 
   private getProjectTypeChildren(projectType: string): vscode.TreeItem[] {
+    console.log(`getProjectTypeChildren called for project type: ${projectType}`);
     return [
+      // Use different context values to identify these cases specifically
       new ConfigTreeItem('Extensions', vscode.TreeItemCollapsibleState.Expanded, undefined, `project-extensions:${projectType}`),
       new ConfigTreeItem('Blacklist', vscode.TreeItemCollapsibleState.Expanded, undefined, `project-blacklist:${projectType}`)
     ];
   }
 
   private getCustomExtensionItems(projectType: string): vscode.TreeItem[] {
+    console.log(`getCustomExtensionItems called for project type: ${projectType}`);
     const config = this.configService.getConfig();
     const extensions = config.customExtensions[projectType] || [];
     const items = extensions.map(ext =>
@@ -218,6 +223,7 @@ export class ConfigTreeDataProvider implements vscode.TreeDataProvider<vscode.Tr
   }
 
   private getCustomBlacklistItems(projectType: string): vscode.TreeItem[] {
+    console.log(`getCustomBlacklistItems called for project type: ${projectType}`);
     const config = this.configService.getConfig();
     const blacklist = config.customBlacklist[projectType] || [];
     const items = blacklist.map(item =>
@@ -230,16 +236,20 @@ export class ConfigTreeDataProvider implements vscode.TreeDataProvider<vscode.Tr
   }
 
   private getCustomExtensionsRoot(): vscode.TreeItem[] {
+    console.log('getCustomExtensionsRoot called');
     const config = this.configService.getConfig();
+    // This method should be used ONLY for the top-level "Custom Extensions" node under "Extensions"
     return config.projectTypes.map(pt =>
-      new ConfigTreeItem(pt, vscode.TreeItemCollapsibleState.Expanded, undefined, `project-extensions:${pt}`)
+      new ConfigTreeItem(pt, vscode.TreeItemCollapsibleState.Collapsed, undefined, `extensions-custom:${pt}`)
     );
   }
 
   private getCustomBlacklistRoot(): vscode.TreeItem[] {
+    console.log('getCustomBlacklistRoot called');
     const config = this.configService.getConfig();
+    // This method should be used ONLY for the top-level "Custom Blacklist" node under "Blacklist"
     return config.projectTypes.map(pt =>
-      new ConfigTreeItem(pt, vscode.TreeItemCollapsibleState.Expanded, undefined, `project-blacklist:${pt}`)
+      new ConfigTreeItem(pt, vscode.TreeItemCollapsibleState.Collapsed, undefined, `blacklist-custom:${pt}`)
     );
   }
 }
