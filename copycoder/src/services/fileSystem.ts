@@ -7,4 +7,5 @@ export interface FileSystem {
   unlinkSync(path: string): void;
   readdirSync(path: string): string[];
   isDirectory(path: string): boolean; // Required method
+  execSync(command: string, options?: { cwd?: string; encoding?: string }): string;
 }

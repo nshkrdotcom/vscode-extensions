@@ -1,4 +1,5 @@
 import * as fs from 'fs';
+import { execSync } from 'child_process';
 import { FileSystem } from './fileSystem';
 
 export class NodeFileSystem implements FileSystem {
@@ -74,6 +75,21 @@ export class NodeFileSystem implements FileSystem {
     } catch (error) {
       console.error('Error checking if path is directory:', path, error);
       return false; // Return false if the path doesn't exist or is inaccessible
+    }
+  }
+
+  execSync(command: string, options?: { cwd?: string; encoding?: string }): string {
+    try {
+      console.log('Debug: Executing command:', command, 'with options:', options);
+      const result = execSync(command, {
+        cwd: options?.cwd,
+        encoding: (options?.encoding as BufferEncoding) || 'utf8'
+      });
+      console.log('Debug: Command executed successfully');
+      return result.toString();
+    } catch (error) {
+      console.error('Error executing command:', command, error);
+      throw error;
     }
   }
 }

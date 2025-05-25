@@ -68,36 +68,9 @@ export class FileService {
       }
     });
 
-    // Add gitignore patterns if enabled
+    // Add gitignore filtering if enabled - we'll handle this differently now
     if (config.filterUsingGitignore) {
-      console.log('FileService.scanWorkspaceFiles - filterUsingGitignore is TRUE, processing .gitignore');
-      const gitignorePatterns = this.parseGitignore(workspaceRoot);
-      
-      if (gitignorePatterns.length > 0) {
-        gitignorePatterns.forEach(pattern => {
-          // Skip empty patterns
-          if (!pattern) {
-            return;
-          }
-          
-          console.log(`FileService.scanWorkspaceFiles - Processing gitignore pattern: "${pattern}"`);
-          
-          // Convert gitignore pattern to VS Code glob pattern
-          if (pattern.includes('*')) {
-            // Pattern already has wildcard
-            excludePatterns.push(`**/${pattern}`);
-          } 
-          else if (pattern.endsWith('/')) {
-            // Directory pattern (ends with /)
-            excludePatterns.push(`**/${pattern}**`);
-          } 
-          else {
-            // Could be file or directory, add both patterns
-            excludePatterns.push(`**/${pattern}/**`); // Match as directory
-            excludePatterns.push(`**/${pattern}`);    // Match as file
-          }
-        });
-      }
+      console.log('FileService.scanWorkspaceFiles - filterUsingGitignore is TRUE, will filter using git tracked files');
       
       // Always exclude node_modules and .git when using gitignore
       if (!excludePatterns.includes('**/node_modules/**')) {
@@ -107,9 +80,9 @@ export class FileService {
         excludePatterns.push('**/.git/**');
       }
       
-      console.log(`FileService.scanWorkspaceFiles - Added ${gitignorePatterns.length} gitignore patterns`);
+      console.log('FileService.scanWorkspaceFiles - Added standard git exclusions');
     } else {
-      console.log('FileService.scanWorkspaceFiles - filterUsingGitignore is FALSE, skipping .gitignore');
+      console.log('FileService.scanWorkspaceFiles - filterUsingGitignore is FALSE, skipping git filtering');
     }
     
     // Format the exclude pattern for VS Code
@@ -132,9 +105,23 @@ export class FileService {
       
       console.log(`FileService.scanWorkspaceFiles - found ${uris.length} files matching patterns`);
       
+      // Get git tracked files if gitignore filtering is enabled
+      let gitTrackedFiles: Set<string> | null = null;
+      if (config.filterUsingGitignore) {
+        const trackedFilesList = this.getGitTrackedFiles(workspaceRoot);
+        gitTrackedFiles = new Set(trackedFilesList);
+        console.log(`FileService.scanWorkspaceFiles - git tracking ${trackedFilesList.length} files`);
+      }
+      
       for (const uri of uris) {
         const relativePath = vscode.workspace.asRelativePath(uri, false);
         console.log(`FileService.scanWorkspaceFiles - processing ${relativePath}`);
+        
+        // If git filtering is enabled, only include files that are tracked by git
+        if (gitTrackedFiles && !gitTrackedFiles.has(relativePath)) {
+          console.log(`FileService.scanWorkspaceFiles - excluding ${relativePath} (not tracked by git)`);
+          continue;
+        }
         
         try {
           const content = this.fileSystem.readFileSync(uri.fsPath, 'utf-8');
@@ -160,7 +147,14 @@ export class FileService {
     config.projectTypes.forEach(pt => {
       extensions.push(...(config.customExtensions[pt] || []));
     });
-    return new Set(extensions);
+    
+    // Normalize extensions to ensure they all start with a dot
+    const normalizedExtensions = extensions.map(ext => {
+      const trimmed = ext.trim();
+      return trimmed.startsWith('.') ? trimmed : `.${trimmed}`;
+    });
+    
+    return new Set(normalizedExtensions);
   }
 
   getBlacklistedFiles(config: Config): Set<string> {
@@ -178,16 +172,44 @@ export class FileService {
     const ext = path.extname(filename).toLowerCase();
     console.log('FileService.shouldIncludeFile - inputs:', { filename, filePath, ext, allowedExtensions: [...allowedExtensions], blacklistedFiles: [...blacklistedFiles] });
 
-    if (ext === '' && allowedExtensions.has(filename.toLowerCase())) {
-      console.log(`FileService.shouldIncludeFile: Including ${filePath} (no extension, allowed)`);
-      return true;
-    }
-    if (!allowedExtensions.has(ext) && ext !== '') {
-      console.log(`FileService.shouldIncludeFile: Excluding ${filePath} (extension ${ext} not allowed)`);
-      return false;
+    // Handle files without extensions
+    if (ext === '') {
+      // Check if the filename itself (without extension) is in the allowed extensions
+      const filenameWithDot = `.${filename.toLowerCase()}`;
+      if (allowedExtensions.has(filename.toLowerCase()) || allowedExtensions.has(filenameWithDot)) {
+        console.log(`FileService.shouldIncludeFile: Including ${filePath} (no extension, filename allowed)`);
+        return true;
+      }
+    } else {
+      // Check if the extension is allowed (with or without dot)
+      const extWithoutDot = ext.substring(1);
+      if (!allowedExtensions.has(ext) && !allowedExtensions.has(extWithoutDot)) {
+        console.log(`FileService.shouldIncludeFile: Excluding ${filePath} (extension ${ext} not allowed)`);
+        return false;
+      }
     }
 
-    const isBlacklisted = [...blacklistedFiles].some((pattern: string) => filePath.includes(pattern));
+    // Check blacklist patterns - support both exact matches and pattern matching
+    const isBlacklisted = [...blacklistedFiles].some((pattern: string) => {
+      // Exact match
+      if (filePath === pattern || filename === pattern) {
+        return true;
+      }
+      
+      // Pattern matching for wildcards
+      if (pattern.includes('*')) {
+        // Convert glob pattern to regex
+        const regexPattern = pattern
+          .replace(/\./g, '\\.')  // Escape dots
+          .replace(/\*/g, '.*');  // Convert * to .*
+        const regex = new RegExp(`^${regexPattern}$`);
+        return regex.test(filePath) || regex.test(filename);
+      }
+      
+      // Simple substring match for directory/file names
+      return filePath.includes(pattern);
+    });
+    
     console.log('FileService.shouldIncludeFile - isBlacklisted:', isBlacklisted, 'for pattern check on:', filePath);
     if (isBlacklisted) {
       console.log(`FileService.shouldIncludeFile: Excluding ${filePath} (blacklisted)`);
@@ -195,49 +217,26 @@ export class FileService {
     return !isBlacklisted;
   }
 
-  parseGitignore(workspaceRoot: string): string[] {
-    const gitignorePath = path.join(workspaceRoot, '.gitignore').replace(/\\/g, '/');
-    console.log(`FileService.parseGitignore - Looking for gitignore at: ${gitignorePath}`);
-    
-    if (!this.fileSystem.existsSync(gitignorePath)) {
-      console.log('FileService.parseGitignore - No .gitignore file found');
-      return [];
-    }
+  getGitTrackedFiles(workspaceRoot: string): string[] {
+    console.log(`FileService.getGitTrackedFiles - Getting git tracked files for: ${workspaceRoot}`);
     
     try {
-      const content = this.fileSystem.readFileSync(gitignorePath, 'utf-8');
-      console.log(`FileService.parseGitignore - Read .gitignore with ${content.split('\n').length} lines`);
+      // First check if this is a git repository
+      this.fileSystem.execSync('git status --porcelain', { cwd: workspaceRoot });
+      console.log('FileService.getGitTrackedFiles - Confirmed git repository');
       
-      // Parse the gitignore content
-      const patterns = content
+      // Get all tracked files using git ls-files
+      const result = this.fileSystem.execSync('git ls-files', { cwd: workspaceRoot });
+      const trackedFiles = result
         .split('\n')
         .map(line => line.trim())
-        // Skip empty lines or comments
-        .filter(line => line && !line.startsWith('#'))
-        // Handle paths
-        .map(line => {
-          // Remove trailing slashes for directories
-          let pattern = line.replace(/\/$/, '').replace(/\\/g, '/');
-          
-          // Handle negated patterns (we'll ignore these for now)
-          if (pattern.startsWith('!')) {
-            console.log(`FileService.parseGitignore - Ignoring negated pattern: ${pattern}`);
-            return '';
-          }
-          
-          // Handle leading slashes (anchored to root)
-          if (pattern.startsWith('/')) {
-            pattern = pattern.substring(1);
-          }
-          
-          return pattern;
-        })
-        .filter(Boolean); // Remove empty patterns
+        .filter(line => line.length > 0)
+        .map(file => file.replace(/\\/g, '/')); // Normalize path separators
       
-      console.log(`FileService.parseGitignore - Parsed ${patterns.length} valid patterns`);
-      return patterns;
+      console.log(`FileService.getGitTrackedFiles - Found ${trackedFiles.length} tracked files`);
+      return trackedFiles;
     } catch (error) {
-      console.error(`Error reading .gitignore: ${error}`);
+      console.log(`FileService.getGitTrackedFiles - Not a git repository or git command failed: ${error}`);
       return [];
     }
   }
@@ -247,12 +246,18 @@ export class FileService {
     const files: FileContent[] = [];
     const allowedExtensions = this.getAllowedExtensions(config);
     const blacklistedFiles = this.getBlacklistedFiles(config);
-    const gitignorePatterns = config.filterUsingGitignore ? this.parseGitignore(workspaceRoot) : [];
+    
+    // Get git tracked files if gitignore filtering is enabled
+    let gitTrackedFiles: Set<string> | null = null;
+    if (config.filterUsingGitignore) {
+      const trackedFilesList = this.getGitTrackedFiles(workspaceRoot);
+      gitTrackedFiles = new Set(trackedFilesList);
+      console.log(`FileService.getFiles - git tracking ${trackedFilesList.length} files`);
+    }
     
     console.log('FileService.getFiles - workspaceRoot:', workspaceRoot);
     console.log('FileService.getFiles - allowedExtensions:', [...allowedExtensions]);
     console.log('FileService.getFiles - blacklistedFiles:', [...blacklistedFiles]);
-    console.log('FileService.getFiles - gitignorePatterns:', gitignorePatterns);
     console.log('FileService.getFiles - filterUsingGitignore:', config.filterUsingGitignore);
 
     const walkDir = (dir: string) => {
@@ -275,13 +280,7 @@ export class FileService {
         const relativePath = path.relative(workspaceRoot, fullPath).replace(/\\/g, '/');
         console.log('FileService.getFiles - processing entry:', { entry, fullPath, relativePath });
 
-        // Check gitignore patterns
-        if (config.filterUsingGitignore && gitignorePatterns.some(pattern => relativePath.includes(pattern))) {
-          console.log(`FileService.getFiles - excluding ${relativePath} (gitignore)`);
-          continue;
-        }
-
-        // Check blacklist
+        // Check blacklist first (applies to both files and directories)
         if (blacklistedFiles.has(entry) || blacklistedFiles.has(relativePath)) {
           console.log(`FileService.getFiles - excluding ${relativePath} (blacklisted)`);
           continue;
@@ -292,6 +291,12 @@ export class FileService {
         console.log('FileService.getFiles - isDirectory for', fullPath, ':', isDirectory);
         if (isDirectory) {
           walkDir(fullPath);
+          continue;
+        }
+
+        // For files: check git tracking if enabled
+        if (config.filterUsingGitignore && gitTrackedFiles && !gitTrackedFiles.has(relativePath)) {
+          console.log(`FileService.getFiles - excluding ${relativePath} (not tracked by git)`);
           continue;
         }
 

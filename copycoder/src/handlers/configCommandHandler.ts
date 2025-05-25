@@ -184,15 +184,27 @@ export class ConfigCommandHandler {
         }
       }
       else if (item.commandId === 'addGlobalExtension') {
-        const extension = await vscode.window.showInputBox({ prompt: 'Enter global extension (e.g., .txt)' });
+        const extension = await vscode.window.showInputBox({ 
+          prompt: 'Enter global extension (e.g., .txt or txt)',
+          validateInput: (value) => {
+            if (!value || value.trim().length === 0) { return 'Extension cannot be empty.'; }
+            const trimmed = value.trim();
+            const normalized = trimmed.startsWith('.') ? trimmed : `.${trimmed}`;
+            const config = this.globalConfigService.getConfig();
+            if (config.globalExtensions.includes(normalized)) { return 'Extension already exists.'; }
+            return null;
+          }
+        });
         if (extension) {
           const config = this.globalConfigService.getConfig();
-          if (!config.globalExtensions.includes(extension)) {
+          const trimmed = extension.trim();
+          const normalizedExtension = trimmed.startsWith('.') ? trimmed : `.${trimmed}`;
+          if (!config.globalExtensions.includes(normalizedExtension)) {
             await this.globalConfigService.updateConfig({
-              globalExtensions: [...config.globalExtensions, extension]
+              globalExtensions: [...config.globalExtensions, normalizedExtension]
             });
             this.treeProvider.refresh();
-            await vscode.window.showInformationMessage(`Global extension ${extension} added.`);
+            await vscode.window.showInformationMessage(`Global extension ${normalizedExtension} added.`);
           }
         }
       }
@@ -205,37 +217,52 @@ export class ConfigCommandHandler {
           throw new Error('Invalid context value format for addCustomExtension');
         }
         const projectType = parts[1];
-        const extension = await vscode.window.showInputBox({ prompt: `Enter extension for ${projectType}` });
+        const extension = await vscode.window.showInputBox({ 
+          prompt: `Enter extension for ${projectType} (e.g., .js or js)`,
+          validateInput: (value) => {
+            if (!value || value.trim().length === 0) { return 'Extension cannot be empty.'; }
+            const trimmed = value.trim();
+            const normalized = trimmed.startsWith('.') ? trimmed : `.${trimmed}`;
+            const config = this.globalConfigService.getConfig();
+            const projectExtensions = config.customExtensions[projectType] || [];
+            if (projectExtensions.includes(normalized)) { return 'Extension already exists for this project type.'; }
+            return null;
+          }
+        });
         if (extension) {
           const config = this.globalConfigService.getConfig();
           const customExtensions = { ...config.customExtensions };
           if (!customExtensions[projectType]) {
             customExtensions[projectType] = [];
           }
-          if (!customExtensions[projectType].includes(extension)) {
-            customExtensions[projectType] = [...customExtensions[projectType], extension];
+          const trimmed = extension.trim();
+          const normalizedExtension = trimmed.startsWith('.') ? trimmed : `.${trimmed}`;
+          if (!customExtensions[projectType].includes(normalizedExtension)) {
+            customExtensions[projectType] = [...customExtensions[projectType], normalizedExtension];
             await this.globalConfigService.updateConfig({ customExtensions });
             this.treeProvider.refresh();
-            await vscode.window.showInformationMessage(`Extension ${extension} added for ${projectType}.`);
+            await vscode.window.showInformationMessage(`Extension ${normalizedExtension} added for ${projectType}.`);
           }
         }
       }
       else if (item.commandId === 'addGlobalBlacklist') {
         const itemName = await vscode.window.showInputBox({
-          prompt: 'Enter file or folder name to blacklist (e.g., node_modules)',
+          prompt: 'Enter file or folder name to blacklist (e.g., node_modules, *.min.js)',
           validateInput: (value) => {
             if (!value || value.trim().length === 0) { return 'Blacklist item cannot be empty.'; }
             const config = this.globalConfigService.getConfig();
-            if (config.globalBlacklist.includes(value)) { return 'Item already exists.'; }
+            if (config.globalBlacklist.includes(value.trim())) { return 'Item already exists.'; }
             return null;
           }
         });
         if (itemName) {
           const config = this.globalConfigService.getConfig();
-          config.globalBlacklist.push(itemName);
-          await this.globalConfigService.saveConfig();
+          const trimmedItemName = itemName.trim();
+          await this.globalConfigService.updateConfig({
+            globalBlacklist: [...config.globalBlacklist, trimmedItemName]
+          });
           this.treeProvider.refresh();
-          MessageService.showInfo(`Global blacklist item "${itemName}" added.`);
+          MessageService.showInfo(`Global blacklist item "${trimmedItemName}" added.`);
         }
       }
       else if (item.commandId === 'addCustomBlacklist') {

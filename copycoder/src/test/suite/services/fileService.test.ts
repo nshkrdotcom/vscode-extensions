@@ -63,9 +63,12 @@ suite('FileService Tests', () => {
     assert.ok(!files.some((f: FileContent) => f.path === 'file.md'), 'should exclude file.md');
   });
 
-  test('should include global blacklist when filterUsingGitignore is true', async () => {
+  test('should use git tracking when filterUsingGitignore is true', async () => {
     fileSystem.writeFileSync('/project/node_modules/file.js', 'JS content', 'utf-8');
     fileSystem.writeFileSync('/project/src/file.js', 'JS content', 'utf-8');
+    
+    // Set up git tracked files (simulating that only src/file.js is tracked, not node_modules)
+    fileSystem.setGitTrackedFiles(['src/file.js']);
 
     const config: Config = {
       includeGlobalExtensions: true,
@@ -79,9 +82,9 @@ suite('FileService Tests', () => {
 
     const files = fileService.getFiles('/project', config);
 
-    assert.strictEqual(files.length, 1, 'should exclude node_modules');
+    assert.strictEqual(files.length, 1, 'should only include git tracked files');
     assert.ok(files.some((f: FileContent) => f.path === 'src/file.js'), 'should include src/file.js');
-    assert.ok(!files.some((f: FileContent) => f.path.includes('node_modules')), 'should exclude node_modules/file.js');
+    assert.ok(!files.some((f: FileContent) => f.path.includes('node_modules')), 'should exclude node_modules/file.js (not tracked)');
   });
 
   test('should exclude files in blacklisted directories', async () => {
@@ -126,14 +129,42 @@ suite('FileService Tests', () => {
     assert.ok(!files.some((f: FileContent) => f.path === 'file.exe'), 'should exclude file.exe');
   });
 
-  test('should respect .gitignore when scanning files', async () => {
-    fileSystem.writeFileSync('/project/.gitignore', 'node_modules\n', 'utf-8');
+  test('should respect git tracking when scanning files', async () => {
     fileSystem.writeFileSync('/project/node_modules/file.js', 'JS content', 'utf-8');
     fileSystem.writeFileSync('/project/src/file.js', 'JS content', 'utf-8');
+    fileSystem.writeFileSync('/project/README.md', 'Readme content', 'utf-8');
+    
+    // Set up git tracked files (simulating that only src/file.js and README.md are tracked)
+    fileSystem.setGitTrackedFiles(['src/file.js', 'README.md']);
 
     const config: Config = {
       includeGlobalExtensions: true,
       filterUsingGitignore: true,
+      projectTypes: ['node'],
+      globalExtensions: ['.js', '.md'],
+      customExtensions: { node: ['.js'] },
+      globalBlacklist: [],
+      customBlacklist: { node: [] }
+    };
+
+    const files = fileService.getFiles('/project', config);
+
+    assert.strictEqual(files.length, 2, 'should only include git tracked files');
+    assert.ok(files.some((f: FileContent) => f.path === 'src/file.js'), 'should include src/file.js');
+    assert.ok(files.some((f: FileContent) => f.path === 'README.md'), 'should include README.md');
+    assert.ok(!files.some((f: FileContent) => f.path.includes('node_modules')), 'should exclude node_modules/file.js (not tracked)');
+  });
+
+  test('should not use git tracking when filterUsingGitignore is false', async () => {
+    fileSystem.writeFileSync('/project/node_modules/file.js', 'JS content', 'utf-8');
+    fileSystem.writeFileSync('/project/src/file.js', 'JS content', 'utf-8');
+    
+    // Set up git tracked files, but they shouldn't be used since filterUsingGitignore is false
+    fileSystem.setGitTrackedFiles(['src/file.js']);
+
+    const config: Config = {
+      includeGlobalExtensions: true,
+      filterUsingGitignore: false,
       projectTypes: ['node'],
       globalExtensions: ['.js'],
       customExtensions: { node: ['.js'] },
@@ -143,8 +174,79 @@ suite('FileService Tests', () => {
 
     const files = fileService.getFiles('/project', config);
 
-    assert.strictEqual(files.length, 1, 'should respect .gitignore');
+    assert.strictEqual(files.length, 2, 'should include all files when git filtering is disabled');
     assert.ok(files.some((f: FileContent) => f.path === 'src/file.js'), 'should include src/file.js');
-    assert.ok(!files.some((f: FileContent) => f.path.includes('node_modules')), 'should exclude node_modules/file.js');
+    assert.ok(files.some((f: FileContent) => f.path.includes('node_modules')), 'should include node_modules/file.js when git filtering is disabled');
+  });
+
+  test('should handle extensions with and without dots', async () => {
+    fileSystem.writeFileSync('/project/file.js', 'JS content', 'utf-8');
+    fileSystem.writeFileSync('/project/file.py', 'Python content', 'utf-8');
+    fileSystem.writeFileSync('/project/file.txt', 'Text content', 'utf-8');
+
+    const config: Config = {
+      includeGlobalExtensions: true,
+      filterUsingGitignore: false,
+      projectTypes: ['node'],
+      globalExtensions: ['js', '.py'], // Mix of with and without dots
+      customExtensions: { node: ['txt'] }, // Without dot
+      globalBlacklist: [],
+      customBlacklist: { node: [] }
+    };
+
+    const files = fileService.getFiles('/project', config);
+
+    assert.strictEqual(files.length, 3, 'should include all files regardless of dot notation');
+    assert.ok(files.some((f: FileContent) => f.path === 'file.js'), 'should include file.js');
+    assert.ok(files.some((f: FileContent) => f.path === 'file.py'), 'should include file.py');
+    assert.ok(files.some((f: FileContent) => f.path === 'file.txt'), 'should include file.txt');
+  });
+
+  test('should respect global blacklist patterns', async () => {
+    fileSystem.writeFileSync('/project/file.js', 'JS content', 'utf-8');
+    fileSystem.writeFileSync('/project/file.min.js', 'Minified JS content', 'utf-8');
+    fileSystem.writeFileSync('/project/src/file.js', 'Source JS content', 'utf-8');
+    fileSystem.writeFileSync('/project/.DS_Store', 'System file', 'utf-8');
+
+    const config: Config = {
+      includeGlobalExtensions: true,
+      filterUsingGitignore: false,
+      projectTypes: ['node'],
+      globalExtensions: ['.js'],
+      customExtensions: { node: ['.js'] },
+      globalBlacklist: ['*.min.js', '.DS_Store'],
+      customBlacklist: { node: [] }
+    };
+
+    const files = fileService.getFiles('/project', config);
+
+    assert.strictEqual(files.length, 2, 'should exclude blacklisted files');
+    assert.ok(files.some((f: FileContent) => f.path === 'file.js'), 'should include file.js');
+    assert.ok(files.some((f: FileContent) => f.path === 'src/file.js'), 'should include src/file.js');
+    assert.ok(!files.some((f: FileContent) => f.path === 'file.min.js'), 'should exclude file.min.js');
+    assert.ok(!files.some((f: FileContent) => f.path === '.DS_Store'), 'should exclude .DS_Store');
+  });
+
+  test('should handle directory blacklist patterns', async () => {
+    fileSystem.writeFileSync('/project/node_modules/file.js', 'JS content', 'utf-8');
+    fileSystem.writeFileSync('/project/src/file.js', 'JS content', 'utf-8');
+    fileSystem.writeFileSync('/project/dist/file.js', 'Built JS content', 'utf-8');
+
+    const config: Config = {
+      includeGlobalExtensions: true,
+      filterUsingGitignore: false,
+      projectTypes: ['node'],
+      globalExtensions: ['.js'],
+      customExtensions: { node: ['.js'] },
+      globalBlacklist: ['node_modules', 'dist'],
+      customBlacklist: { node: [] }
+    };
+
+    const files = fileService.getFiles('/project', config);
+
+    assert.strictEqual(files.length, 1, 'should exclude blacklisted directories');
+    assert.ok(files.some((f: FileContent) => f.path === 'src/file.js'), 'should include src/file.js');
+    assert.ok(!files.some((f: FileContent) => f.path.includes('node_modules')), 'should exclude node_modules directory');
+    assert.ok(!files.some((f: FileContent) => f.path.includes('dist')), 'should exclude dist directory');
   });
 });

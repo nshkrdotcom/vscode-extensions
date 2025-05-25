@@ -4,6 +4,7 @@ import { FileSystem } from '../../services/fileSystem';
 export class MockFileSystem implements FileSystem {
   private files: { [path: string]: string } = {};
   private directories: { [path: string]: string[] } = {};
+  private gitTrackedFiles: string[] = []; // For mocking git ls-files
 
   reset(): void {
     this.files = {};
@@ -68,5 +69,28 @@ export class MockFileSystem implements FileSystem {
     const isDir = path in this.directories && !(path in this.files);
     console.log(`MockFileSystem: isDirectory(${path}) = ${isDir}`);
     return isDir;
+  }
+
+  execSync(command: string, options?: { cwd?: string; encoding?: string }): string {
+    console.log(`MockFileSystem: execSync(${command}) with options:`, options);
+    
+    // Mock git ls-files command
+    if (command.includes('git ls-files')) {
+      return this.gitTrackedFiles.join('\n');
+    }
+    
+    // Mock git status --porcelain to check if it's a git repo
+    if (command.includes('git status --porcelain')) {
+      // Return empty string to indicate it's a valid git repo
+      return '';
+    }
+    
+    // For other commands, return empty string
+    return '';
+  }
+
+  // Helper method for tests to set up git tracked files
+  setGitTrackedFiles(files: string[]): void {
+    this.gitTrackedFiles = files;
   }
 }

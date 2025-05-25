@@ -62,7 +62,12 @@ CopyCoder comes preconfigured with settings for these project types:
 
 ## Release Notes
 
-### 0.2.0
+### 0.2.2
+
+- Revamped gitignore filter to use git command
+- Fixed extensions to allow prepended extensions (.ext) and wildcards (*.ext)
+
+### 0.2.1
 
 - Fixed "Copy Open Files" feature to properly handle multiple editor tabs
 - Added proper support for gitignore-based filtering
