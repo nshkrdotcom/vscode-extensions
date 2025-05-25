@@ -1,4 +1,4 @@
-# CopyCoder (v0.2.1)
+# CopyCoder (v0.2.3)
 
 CopyCoder is a VS Code extension designed to easily copy your code for sharing with AI assistants like Claude, GPT, or other LLMs. It provides an easy way to prepare your code context for prompting by formatting multiple files into a clipboard-ready format.
 
@@ -61,6 +61,10 @@ CopyCoder comes preconfigured with settings for these project types:
 - WSL2
 
 ## Release Notes
+
+### 0.2.3
+
+- Fix typo in README.md
 
 ### 0.2.2
 
