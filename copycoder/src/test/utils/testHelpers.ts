@@ -60,9 +60,7 @@ export function createMockFileMetadata(relativePath: string, options: Partial<{
 
 export function createMockConfig(overrides: Partial<{
   globalBlacklist?: string[];
-  projectSpecificBlacklist?: string[];
   globalExtensions?: string[];
-  projectSpecificExtensions?: string[];
   includeGlobalExtensions?: boolean;
   filterUsingGitignore?: boolean;
   projectTypes?: string[];

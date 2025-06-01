@@ -28,7 +28,7 @@ suite('ConfigCommandHandler Tests', () => {
 
   test('toggleIncludeGlobalExtensions', async () => {
     const refreshSpy = sinon.stub(configTreeProvider, 'refresh');
-    const saveSpy = sinon.spy(globalConfigService, 'saveConfig');
+    // const saveSpy = sinon.spy(globalConfigService, 'saveConfig');
     
     // Create initial state and stub updateConfig
     const updateConfigStub = sinon.stub(globalConfigService, 'updateConfig');

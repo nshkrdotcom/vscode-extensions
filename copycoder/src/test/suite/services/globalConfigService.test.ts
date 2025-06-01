@@ -2,7 +2,7 @@ import * as assert from 'assert';
 import * as sinon from 'sinon';
 import { GlobalConfigService } from '../../../services/globalConfigService';
 import { MockFileSystem } from '../mockFileSystem';
-import { DEFAULT_CONFIG } from '../../../models/config';
+// import { DEFAULT_CONFIG } from '../../../models/config';
 
 suite('GlobalConfigService Tests', () => {
   let fileSystem: MockFileSystem;

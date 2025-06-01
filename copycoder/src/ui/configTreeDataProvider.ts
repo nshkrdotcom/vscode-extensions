@@ -44,7 +44,7 @@ export class ConfigTreeDataProvider implements vscode.TreeDataProvider<vscode.Tr
       return this.getRootItems();
     }
 
-    const config = this.configService.getConfig();
+    // const config = this.configService.getConfig();
 
     if (element.label === 'General') {
       return this.getGeneralItems();

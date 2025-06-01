@@ -1,5 +1,4 @@
 import { FileFilter, FileMetadata, FilterContext } from '../../../models/fileMetadata';
-import { Config } from '../../../models/config';
 import * as path from 'path';
 
 /**
